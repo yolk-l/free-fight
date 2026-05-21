@@ -1,0 +1,31 @@
+[gd_scene load_steps=2 format=3 uid="uid://stat_bar_scene"]
+
+[ext_resource type="Script" path="res://scripts/battle/stat_bar.gd" id="1_stat_bar"]
+
+[node name="StatBar" type="Control"]
+custom_minimum_size = Vector2(140, 48)
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_stat_bar")
+
+[node name="HBox" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_right = 140.0
+offset_bottom = 20.0
+
+[node name="HPBar" type="ProgressBar" parent="HBox"]
+custom_minimum_size = Vector2(140, 16)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="StatsLabel" type="Label" parent="."]
+layout_mode = 0
+offset_top = 22.0
+offset_right = 200.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "攻:0 防:0 血:0/0 攻速:0"

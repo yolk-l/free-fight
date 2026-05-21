@@ -1,0 +1,25 @@
+[gd_scene load_steps=3 format=3 uid="uid://monster_unit_scene"]
+
+[ext_resource type="Script" path="res://scripts/battle/monster.gd" id="1_monster"]
+[ext_resource type="PackedScene" uid="uid://stat_bar_scene" path="res://scenes/battle/ui/stat_bar.tscn" id="2_stat_bar"]
+
+[node name="Monster" type="Node2D"]
+script = ExtResource("1_monster")
+
+[node name="Body" type="Sprite2D" parent="."]
+
+[node name="NameLabel" type="Label" parent="."]
+offset_left = -40.0
+offset_top = -48.0
+offset_right = 40.0
+offset_bottom = -30.0
+theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "怪物"
+horizontal_alignment = 1
+
+[node name="StatBar" parent="." instance=ExtResource("2_stat_bar")]
+offset_left = -60.0
+offset_top = 32.0
+offset_right = 60.0
+offset_bottom = 80.0

@@ -1,0 +1,270 @@
+[gd_scene load_steps=11 format=3 uid="uid://battle_scene"]
+
+[ext_resource type="Script" path="res://scripts/battle/battle_controller.gd" id="1_battle"]
+[ext_resource type="Script" path="res://scripts/battle/loot_system.gd" id="7_loot_sys"]
+[ext_resource type="Script" path="res://scripts/battle/deploy_manager.gd" id="3_deploy_mgr"]
+[ext_resource type="PackedScene" uid="uid://hero_unit_scene" path="res://scenes/battle/hero_unit.tscn" id="2_hero"]
+[ext_resource type="Script" path="res://scripts/battle/card_hand.gd" id="5_card_hand"]
+[ext_resource type="Script" path="res://scripts/ui/wireframe_button.gd" id="6_btn"]
+[ext_resource type="Script" path="res://scripts/battle/battlefield_drop_zone.gd" id="9_drop_zone"]
+[ext_resource type="Texture2D" path="res://assets/ui/battle_bg.png" id="10_bg"]
+[ext_resource type="Texture2D" path="res://assets/ui/panel_bg.png" id="11_panel"]
+[ext_resource type="Texture2D" path="res://assets/ui/drop_zone_frame.png" id="12_dz"]
+
+[node name="BattleScene" type="Node2D"]
+script = ExtResource("1_battle")
+
+[node name="Background" type="TextureRect" parent="."]
+offset_right = 1280.0
+offset_bottom = 720.0
+texture = ExtResource("10_bg")
+stretch_mode = 6
+
+[node name="Units" type="Node2D" parent="."]
+
+[node name="Hero" parent="Units" instance=ExtResource("2_hero")]
+position = Vector2(180, 320)
+
+[node name="Monsters" type="Node2D" parent="Units"]
+
+[node name="Loot" type="Node2D" parent="Units"]
+
+[node name="DeployManager" type="Node" parent="."]
+script = ExtResource("3_deploy_mgr")
+
+[node name="LootSystem" type="Node" parent="."]
+script = ExtResource("7_loot_sys")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="TopBar" type="HBoxContainer" parent="UI"]
+offset_left = 20.0
+offset_top = 8.0
+offset_right = 1260.0
+offset_bottom = 40.0
+
+[node name="TopLabel" type="Label" parent="UI/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.6, 0.7, 0.85, 1)
+theme_override_font_sizes/font_size = 13
+text = "拖拽部署；留牌降低英雄能力"
+
+[node name="SurvivalLabel" type="Label" parent="UI/TopBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.75, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "存活: 0s"
+horizontal_alignment = 2
+
+[node name="HeroZoneFrame" type="ColorRect" parent="UI"]
+offset_left = 40.0
+offset_top = 50.0
+offset_right = 360.0
+offset_bottom = 560.0
+color = Color(0.12, 0.14, 0.2, 0.3)
+
+[node name="HeroZoneLabel" type="Label" parent="UI/HeroZoneFrame"]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 80.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(0.4, 0.5, 0.7, 0.6)
+theme_override_font_sizes/font_size = 11
+text = "英雄区"
+
+[node name="BattlefieldDropZone" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 700.0
+offset_top = 50.0
+offset_right = 1240.0
+offset_bottom = 560.0
+mouse_filter = 0
+script = ExtResource("9_drop_zone")
+
+[node name="Frame" type="TextureRect" parent="UI/BattlefieldDropZone"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("12_dz")
+stretch_mode = 6
+
+[node name="DropHint" type="Label" parent="UI/BattlefieldDropZone"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.4, 0.55, 0.8, 0.5)
+theme_override_font_sizes/font_size = 16
+text = "部署区"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BottomBg" type="TextureRect" parent="UI"]
+offset_left = 0.0
+offset_top = 520.0
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+texture = ExtResource("11_panel")
+stretch_mode = 6
+
+[node name="BottomPanel" type="VBoxContainer" parent="UI"]
+offset_left = 20.0
+offset_top = 528.0
+offset_right = 1260.0
+offset_bottom = 710.0
+theme_override_constants/separation = 6
+
+[node name="EquipmentBar" type="HBoxContainer" parent="UI/BottomPanel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="EquipTitle" type="Label" parent="UI/BottomPanel/EquipmentBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
+theme_override_font_sizes/font_size = 13
+text = "装备:"
+
+[node name="WeaponSlot" type="PanelContainer" parent="UI/BottomPanel/EquipmentBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+
+[node name="HBox" type="HBoxContainer" parent="UI/BottomPanel/EquipmentBar/WeaponSlot"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Icon" type="TextureRect" parent="UI/BottomPanel/EquipmentBar/WeaponSlot/HBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(24, 24)
+stretch_mode = 5
+
+[node name="VBox" type="VBoxContainer" parent="UI/BottomPanel/EquipmentBar/WeaponSlot/HBox"]
+layout_mode = 2
+
+[node name="WeaponTitle" type="Label" parent="UI/BottomPanel/EquipmentBar/WeaponSlot/HBox/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
+theme_override_font_sizes/font_size = 10
+text = "武器"
+
+[node name="Label" type="Label" parent="UI/BottomPanel/EquipmentBar/WeaponSlot/HBox/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.85, 0.9, 1)
+theme_override_font_sizes/font_size = 12
+text = "[空]"
+
+[node name="ArmorSlot" type="PanelContainer" parent="UI/BottomPanel/EquipmentBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+
+[node name="HBox" type="HBoxContainer" parent="UI/BottomPanel/EquipmentBar/ArmorSlot"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Icon" type="TextureRect" parent="UI/BottomPanel/EquipmentBar/ArmorSlot/HBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(24, 24)
+stretch_mode = 5
+
+[node name="VBox" type="VBoxContainer" parent="UI/BottomPanel/EquipmentBar/ArmorSlot/HBox"]
+layout_mode = 2
+
+[node name="ArmorTitle" type="Label" parent="UI/BottomPanel/EquipmentBar/ArmorSlot/HBox/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
+theme_override_font_sizes/font_size = 10
+text = "护甲"
+
+[node name="Label" type="Label" parent="UI/BottomPanel/EquipmentBar/ArmorSlot/HBox/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.85, 0.9, 1)
+theme_override_font_sizes/font_size = 12
+text = "[空]"
+
+[node name="CardHand" type="HBoxContainer" parent="UI/BottomPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("5_card_hand")
+
+[node name="Title" type="Label" parent="UI/BottomPanel/CardHand"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
+theme_override_font_sizes/font_size = 13
+text = "手牌"
+
+[node name="HoldSummary" type="Label" parent="UI/BottomPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.55, 0.45, 1)
+theme_override_font_sizes/font_size = 12
+text = "持仓：无"
+
+[node name="DiscardRow" type="HBoxContainer" parent="UI/BottomPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BtnDiscard" type="Button" parent="UI/BottomPanel/DiscardRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(72, 28)
+theme_override_font_sizes/font_size = 12
+text = "弃牌"
+
+[node name="DiscardCooldown" type="Label" parent="UI/BottomPanel/DiscardRow"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "弃牌就绪"
+vertical_alignment = 1
+
+[node name="GameOverPanel" type="PanelContainer" parent="UI"]
+visible = false
+offset_left = 390.0
+offset_top = 220.0
+offset_right = 890.0
+offset_bottom = 460.0
+
+[node name="VBox" type="VBoxContainer" parent="UI/GameOverPanel"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Spacer" type="Control" parent="UI/GameOverPanel/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+
+[node name="Title" type="Label" parent="UI/GameOverPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.3, 0.25, 1)
+theme_override_font_sizes/font_size = 32
+text = "GAME OVER"
+horizontal_alignment = 1
+
+[node name="Msg" type="Label" parent="UI/GameOverPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.75, 1)
+theme_override_font_sizes/font_size = 14
+text = "英雄已阵亡"
+horizontal_alignment = 1
+
+[node name="BtnRestart" type="Button" parent="UI/GameOverPanel/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 44)
+size_flags_horizontal = 4
+text = "重新开始"
+script = ExtResource("6_btn")
+
+[node name="BtnMenu" type="Button" parent="UI/GameOverPanel/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 44)
+size_flags_horizontal = 4
+text = "返回主菜单"
+script = ExtResource("6_btn")

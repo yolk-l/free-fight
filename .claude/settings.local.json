@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:itch.io)",
+      "WebFetch(domain:kenney.nl)",
+      "Bash(python -c \"from PIL import Image; print\\('Pillow OK'\\)\")",
+      "Bash(python generate_assets.py)",
+      "Bash(python generate_ui_assets.py)"
+    ]
+  }
+}
