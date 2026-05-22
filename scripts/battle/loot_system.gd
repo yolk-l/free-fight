@@ -1,57 +1,39 @@
 class_name LootSystem
 extends Node
 
-const LOOT_SCENE := preload("res://scenes/battle/loot_drop.tscn")
-
-const CHANCE_EQUIPMENT := 0.3
-const CHANCE_CARD := 0.5
-
-var _hero: Hero = null
-var _card_hand: CardHand = null
-var _loot_container: Node2D = null
+var _backpack = null
+var _loot_table: LootTable = null
 
 
-func setup(hero: Hero, card_hand: CardHand, loot_container: Node2D) -> void:
-	_hero = hero
-	_card_hand = card_hand
-	_loot_container = loot_container
+func setup(backpack, loot_table: LootTable) -> void:
+	_backpack = backpack
+	_loot_table = loot_table
 
 
 func on_monster_died(monster: Monster) -> void:
 	if monster.data != null:
 		GameManager.unlock_monster(monster.data.id)
-	var roll := randf()
-	if roll < CHANCE_EQUIPMENT:
-		_spawn_equipment(monster.global_position)
-	elif roll < CHANCE_EQUIPMENT + CHANCE_CARD:
-		_spawn_card(monster.global_position, monster.data.id if monster.data else DataRegistry.get_random_monster_id())
-
-
-func _spawn_equipment(pos: Vector2) -> void:
-	var ids := DataRegistry.get_all_equipment_ids()
-	if ids.is_empty():
+	if _loot_table == null or _backpack == null:
 		return
-	var equip_id: StringName = ids[randi() % ids.size()]
-	var drop: LootDrop = LOOT_SCENE.instantiate()
-	_loot_container.add_child(drop)
-	drop.global_position = pos
-	drop.setup_equipment(equip_id)
-	drop.picked_up.connect(_on_loot_picked)
+	var entry := _loot_table.roll()
+	if entry == null or entry.drop_type == LootEntry.DropType.NOTHING:
+		return
+	if entry.drop_type == LootEntry.DropType.EQUIPMENT:
+		_generate_equipment(entry.equipment_id)
 
 
-func _spawn_card(pos: Vector2, monster_id: StringName) -> void:
-	var drop: LootDrop = LOOT_SCENE.instantiate()
-	_loot_container.add_child(drop)
-	drop.global_position = pos
-	drop.setup_card(monster_id)
-	drop.picked_up.connect(_on_loot_picked)
-
-
-func _on_loot_picked(drop: LootDrop) -> void:
-	if drop.drop_type == LootDrop.DropType.EQUIPMENT:
-		var equip := DataRegistry.get_equipment(drop.equipment_id)
-		if equip and _hero and _hero.inventory:
-			if _hero.inventory.equip(equip):
-				GameManager.unlock_equipment(equip.id)
-	elif drop.drop_type == LootDrop.DropType.CARD and _card_hand:
-		_card_hand.add_card(drop.monster_card_id)
+func _generate_equipment(specific_id: StringName = &"") -> void:
+	var equip_id := specific_id
+	if equip_id == &"":
+		var ids := DataRegistry.get_all_equipment_ids()
+		if ids.is_empty():
+			return
+		equip_id = ids[randi() % ids.size()]
+	var data := DataRegistry.get_equipment(equip_id)
+	if data == null:
+		return
+	var quality := EquipmentQuality.roll_quality()
+	var affix := EquipmentAffix.roll_affix(data.slot_type)
+	var instance = EquipmentInstance.create(data, quality, affix)
+	if _backpack.add_item(instance):
+		GameManager.unlock_equipment(equip_id)

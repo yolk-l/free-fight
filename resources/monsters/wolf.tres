@@ -1,20 +1,16 @@
-[gd_resource type="Resource" script_class="MonsterData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="MonsterData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://data/monster_data.gd" id="1_monster"]
 [ext_resource type="Script" path="res://data/combat_stats.gd" id="2_stats"]
-[ext_resource type="Script" path="res://data/hold_penalty_stats.gd" id="3_hold"]
+[ext_resource type="Resource" path="res://resources/buffs/hold_wolf.tres" id="3_hold_debuff"]
 
 [sub_resource type="Resource" id="CombatStats_wolf"]
 script = ExtResource("2_stats")
-attack = 10
-max_hp = 55
-hp = 55
-defense = 1
+attack = 5
+max_hp = 25
+hp = 25
+defense = 0
 attack_speed = 1.0
-
-[sub_resource type="Resource" id="Hold_wolf"]
-script = ExtResource("3_hold")
-attack = -2
 
 [resource]
 script = ExtResource("1_monster")
@@ -22,6 +18,5 @@ id = &"wolf"
 display_name = "狼"
 base_stats = SubResource("CombatStats_wolf")
 wireframe_color = Color(0.75, 0.75, 0.8, 1)
-move_speed = 90.0
-hold_penalty = SubResource("Hold_wolf")
-hold_bleed_per_sec = 0.0
+move_speed = 80.0
+hold_debuff = ExtResource("3_hold_debuff")

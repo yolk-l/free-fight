@@ -46,19 +46,3 @@ static func zero_bonus() -> CombatStats:
 	return bonus
 
 
-func merge_penalty_from(other: CombatStats) -> void:
-	if other == null:
-		return
-	attack += other.attack
-	defense += other.defense
-	attack_speed += other.attack_speed
-
-
-func apply_penalty(penalty: CombatStats) -> CombatStats:
-	var result := duplicate_stats()
-	if penalty == null:
-		return result
-	result.attack = maxi(GameConfig.MIN_ATTACK, result.attack + penalty.attack)
-	result.defense = maxi(GameConfig.MIN_DEFENSE, result.defense + penalty.defense)
-	result.attack_speed = maxf(GameConfig.MIN_ATTACK_SPEED, result.attack_speed + penalty.attack_speed)
-	return result

@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://hero_unit_scene"]
+[gd_scene load_steps=6 format=3 uid="uid://hero_unit_scene"]
 
 [ext_resource type="Script" path="res://scripts/battle/hero.gd" id="1_hero"]
 [ext_resource type="Script" path="res://scripts/battle/equipment_inventory.gd" id="2_inventory"]
 [ext_resource type="PackedScene" uid="uid://stat_bar_scene" path="res://scenes/battle/ui/stat_bar.tscn" id="3_stat_bar"]
 [ext_resource type="Texture2D" path="res://assets/hero.png" id="4_hero_tex"]
+[ext_resource type="Script" path="res://scripts/battle/buff_container.gd" id="5_buff_container"]
 
 [node name="Hero" type="Node2D"]
 script = ExtResource("1_hero")
@@ -29,3 +30,6 @@ offset_bottom = 103.0
 
 [node name="EquipmentInventory" type="Node" parent="."]
 script = ExtResource("2_inventory")
+
+[node name="BuffContainer" type="Node" parent="."]
+script = ExtResource("5_buff_container")

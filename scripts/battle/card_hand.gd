@@ -8,7 +8,10 @@ const MAX_CARDS := 7
 const CARD_UI_SCRIPT := preload("res://scripts/battle/monster_card_ui.gd")
 
 var _card_ids: Array[StringName] = []
+var _card_source_ids: Array[StringName] = []
 var _selected_id: StringName = &""
+var _buff_target: BuffContainer = null
+var _next_source_idx: int = 0
 
 @onready var _title: Label = $Title
 
@@ -18,18 +21,31 @@ func _ready() -> void:
 		_title.text = "手牌 (拖拽部署 / 点击选中)"
 
 
+func set_buff_target(container: BuffContainer) -> void:
+	_buff_target = container
+
+
 func setup_initial_cards(count: int = 3) -> void:
 	_card_ids.clear()
+	_card_source_ids.clear()
 	_selected_id = &""
+	_next_source_idx = 0
 	for i in count:
-		_add_card(DataRegistry.get_random_monster_id())
+		var mid := DataRegistry.get_random_monster_id()
+		var source := _generate_source_id(mid)
+		_card_ids.append(mid)
+		_card_source_ids.append(source)
+		_apply_hold_debuff_with_source(mid, source)
 	_rebuild_ui()
 
 
 func add_card(monster_id: StringName) -> bool:
 	if monster_id == &"" or _card_ids.size() >= MAX_CARDS:
 		return false
+	var source := _generate_source_id(monster_id)
 	_card_ids.append(monster_id)
+	_card_source_ids.append(source)
+	_apply_hold_debuff_with_source(monster_id, source)
 	_rebuild_ui()
 	return true
 
@@ -60,34 +76,21 @@ func set_selected(monster_id: StringName) -> void:
 	_rebuild_ui()
 
 
-func get_hold_penalty_sum() -> CombatStats:
-	var sum := CombatStats.zero_bonus()
-	for monster_id in _card_ids:
-		var data := DataRegistry.get_monster(monster_id)
-		if data != null and data.hold_penalty != null:
-			data.hold_penalty.merge_into(sum)
-	return sum
-
-
-func get_hold_bleed_per_sec() -> float:
-	var total := 0.0
-	for monster_id in _card_ids:
-		var data := DataRegistry.get_monster(monster_id)
-		if data != null:
-			total += data.hold_bleed_per_sec
-	return total
-
-
 func format_hold_summary() -> String:
-	var penalty := get_hold_penalty_sum()
-	var bleed := get_hold_bleed_per_sec()
+	if _buff_target == null:
+		return "持仓：无"
+	var mods := _buff_target.get_all_modifiers()
 	var parts: PackedStringArray = []
-	if penalty.attack != 0:
-		parts.append("攻%+d" % penalty.attack)
-	if penalty.defense != 0:
-		parts.append("防%+d" % penalty.defense)
-	if absf(penalty.attack_speed) > 0.001:
-		parts.append("攻速%+.0f%%" % (penalty.attack_speed * 100.0))
+	var atk: float = mods.get("attack", 0.0)
+	var def: float = mods.get("defense", 0.0)
+	var aspd: float = mods.get("attack_speed", 0.0)
+	var bleed: float = mods.get("bleed_per_sec", 0.0)
+	if atk != 0.0:
+		parts.append("攻%+d" % int(atk))
+	if def != 0.0:
+		parts.append("防%+d" % int(def))
+	if absf(aspd) > 0.001:
+		parts.append("攻速%+.0f%%" % (aspd * 100.0))
 	if bleed > 0.0:
 		parts.append("失血%.1f/s" % bleed)
 	if parts.is_empty():
@@ -96,33 +99,50 @@ func format_hold_summary() -> String:
 
 
 static func format_card_hold_hint(data: MonsterData) -> String:
-	if data == null:
+	if data == null or data.hold_debuff == null:
 		return ""
 	var parts: PackedStringArray = []
-	if data.hold_penalty != null:
-		if data.hold_penalty.attack != 0:
-			parts.append("攻%+d" % data.hold_penalty.attack)
-		if data.hold_penalty.defense != 0:
-			parts.append("防%+d" % data.hold_penalty.defense)
-	if data.hold_bleed_per_sec > 0.0:
-		parts.append("血%.1f/s" % data.hold_bleed_per_sec)
+	var mods: Dictionary = data.hold_debuff.modifiers
+	var atk: float = mods.get("attack", 0.0)
+	var def: float = mods.get("defense", 0.0)
+	var bleed: float = mods.get("bleed_per_sec", 0.0)
+	if atk != 0.0:
+		parts.append("攻%+d" % int(atk))
+	if def != 0.0:
+		parts.append("防%+d" % int(def))
+	if bleed > 0.0:
+		parts.append("血%.1f/s" % bleed)
 	if parts.is_empty():
 		return ""
 	return "拿着:" + " ".join(parts)
 
 
-func _add_card(monster_id: StringName) -> void:
-	if monster_id != &"":
-		_card_ids.append(monster_id)
+func _apply_hold_debuff_with_source(monster_id: StringName, source: StringName) -> void:
+	if _buff_target == null:
+		return
+	var data := DataRegistry.get_monster(monster_id)
+	if data == null or data.hold_debuff == null:
+		return
+	_buff_target.add_buff(data.hold_debuff, source)
+
+
+func _generate_source_id(monster_id: StringName) -> StringName:
+	var sid := StringName("hold_%s_%d" % [str(monster_id), _next_source_idx])
+	_next_source_idx += 1
+	return sid
 
 
 func _remove_card(monster_id: StringName) -> void:
 	var index := _card_ids.find(monster_id)
 	if index < 0:
 		return
+	var source := _card_source_ids[index]
 	_card_ids.remove_at(index)
+	_card_source_ids.remove_at(index)
 	if _selected_id == monster_id:
 		_selected_id = &""
+	if _buff_target:
+		_buff_target.remove_buff_by_source(source)
 	_rebuild_ui()
 
 

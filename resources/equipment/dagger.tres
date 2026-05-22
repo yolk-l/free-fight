@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EquipmentData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/equipment_data.gd" id="1_equip"]
+[ext_resource type="Script" path="res://data/combat_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="CombatStats_dagger"]
+script = ExtResource("2_stats")
+attack = 3
+max_hp = 0
+hp = 0
+defense = 0
+attack_speed = 0.5
+
+[resource]
+script = ExtResource("1_equip")
+id = &"dagger"
+display_name = "匕首"
+slot_type = 0
+stat_bonus = SubResource("CombatStats_dagger")

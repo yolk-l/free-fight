@@ -1,15 +1,17 @@
+<!-- AI-CONTEXT: 本目录是项目技术文档的唯一索引入口。修改代码前请先阅读相关模块文档。 -->
+
 # FreeFight 知识目录
 
 本目录记录 **当前版本** 的程序模块设计与职责边界，供后续接手开发与 AI 辅助时查阅。
 
-> 玩法与禁止扩展项见 [`.cursor/rules/development-scope.mdc`](../../.cursor/rules/development-scope.mdc)。
+> 玩法与禁止扩展项见 [`docs/rules/development-scope.md`](../rules/development-scope.md)。
 
 ## 文档索引
 
 | 文档 | 内容 |
 |------|------|
 | [01-架构总览.md](./01-架构总览.md) | 分层、场景流、Autoload、目录树 |
-| [02-数据层.md](./02-数据层.md) | Resource、`HoldPenaltyStats`、`GameConfig`、数值公式 |
+| [02-数据层.md](./02-数据层.md) | Resource、`BuffDef`/`BuffInstance`、`GameConfig`、数值公式 |
 | [03-战斗系统.md](./03-战斗系统.md) | 单位类、部署、持仓/弃牌、战斗循环、掉落 |
 | [04-场景与UI.md](./04-场景与UI.md) | 场景、`assets/`、战斗 UI 节点树 |
 | [05-依赖与扩展.md](./05-依赖与扩展.md) | 依赖图、信号、扩展点、P1 backlog、已移除机制 |
@@ -19,7 +21,8 @@
 
 ### 数值与陷阱速查
 
-- 持仓负面类型必须用 **`HoldPenaltyStats`**，勿用 `CombatStats` 子资源 → [02](./02-数据层.md)、[08](./08-v2-数值初稿.md) §9
+- 持仓负面通过 **`BuffDef`**（PERMANENT 类型）实现，挂在 Hero 的 `BuffContainer` 上 → [02](./02-数据层.md)、[03](./03-战斗系统.md)
+- Buff 属性修改用通用 KV Dictionary（`modifiers`），不限定属性种类 → [02](./02-数据层.md)
 - 英雄有效属性、弃牌、拖拽点击区分 → [03](./03-战斗系统.md)
 - 尚未实现的功能（分怪掉落池等）→ [05](./05-依赖与扩展.md) backlog
 

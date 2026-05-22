@@ -9,13 +9,13 @@ var slots: Dictionary = {
 }
 
 
-func equip(item: EquipmentData) -> bool:
-	if item == null:
+func equip(instance) -> bool:
+	if instance == null or instance.base_data == null:
 		return false
-	var key := item.get_slot_key()
+	var key = instance.get_slot_key()
 	if not slots.has(key):
 		return false
-	slots[key] = item
+	slots[key] = instance
 	equipment_changed.emit()
 	return true
 
@@ -23,13 +23,14 @@ func equip(item: EquipmentData) -> bool:
 func get_stat_bonus() -> CombatStats:
 	var bonus := CombatStats.zero_bonus()
 	for item in slots.values():
-		if item is EquipmentData and item.stat_bonus != null:
-			bonus.attack += item.stat_bonus.attack
-			bonus.max_hp += item.stat_bonus.max_hp
-			bonus.defense += item.stat_bonus.defense
-			bonus.attack_speed += item.stat_bonus.attack_speed
+		if item != null:
+			var item_bonus = item.get_stat_bonus()
+			bonus.attack += item_bonus.attack
+			bonus.max_hp += item_bonus.max_hp
+			bonus.defense += item_bonus.defense
+			bonus.attack_speed += item_bonus.attack_speed
 	return bonus
 
 
-func get_slot_item(slot_key: StringName) -> EquipmentData:
-	return slots.get(slot_key) as EquipmentData
+func get_slot_item(slot_key: StringName):
+	return slots.get(slot_key)

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EquipmentData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/equipment_data.gd" id="1_equip"]
+[ext_resource type="Script" path="res://data/combat_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="CombatStats_chainmail"]
+script = ExtResource("2_stats")
+attack = 0
+max_hp = 30
+hp = 0
+defense = 5
+attack_speed = 0.0
+
+[resource]
+script = ExtResource("1_equip")
+id = &"chainmail"
+display_name = "锁子甲"
+slot_type = 1
+stat_bonus = SubResource("CombatStats_chainmail")

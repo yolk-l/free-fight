@@ -6,7 +6,11 @@
       "WebFetch(domain:kenney.nl)",
       "Bash(python -c \"from PIL import Image; print\\('Pillow OK'\\)\")",
       "Bash(python generate_assets.py)",
-      "Bash(python generate_ui_assets.py)"
+      "Bash(python generate_ui_assets.py)",
+      "Bash(rm \".claude/plans/freefight_demo_计划_91b9d0d5.plan.md\")",
+      "Bash(rm \".claude/rules/development-scope.mdc\")",
+      "Bash(python -c \"from PIL import Image; imgs=['assets/monsters/slime.png','assets/monsters/wolf.png','assets/monsters/goblin.png','assets/hero.png','assets/equipment/wood_sword.png','assets/equipment/leather_armor.png']; [print\\(f'{p}: {Image.open\\(p\\).size}'\\) for p in imgs]\")",
+      "Bash(python tools/gen_temp_assets.py)"
     ]
   }
 }

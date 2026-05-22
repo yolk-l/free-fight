@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://monster_unit_scene"]
+[gd_scene load_steps=4 format=3 uid="uid://monster_unit_scene"]
 
 [ext_resource type="Script" path="res://scripts/battle/monster.gd" id="1_monster"]
 [ext_resource type="PackedScene" uid="uid://stat_bar_scene" path="res://scenes/battle/ui/stat_bar.tscn" id="2_stat_bar"]
+[ext_resource type="Script" path="res://scripts/battle/buff_container.gd" id="3_buff_container"]
 
 [node name="Monster" type="Node2D"]
 script = ExtResource("1_monster")
@@ -23,3 +24,6 @@ offset_left = -60.0
 offset_top = 32.0
 offset_right = 60.0
 offset_bottom = 80.0
+
+[node name="BuffContainer" type="Node" parent="."]
+script = ExtResource("3_buff_container")

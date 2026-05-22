@@ -4,18 +4,26 @@ extends Node2D
 signal died(unit: CombatUnit)
 signal stats_changed
 
+const PROJECTILE_SCENE := preload("res://scenes/battle/projectile.tscn")
+
 @export var display_label: String = "Unit"
 
 var base_stats: CombatStats
+var attack_range: float = GameConfig.ATTACK_RANGE
+var projectile_speed: float = 0.0
+var _projectile_container: Node2D = null
 var _attack_timer: float = 0.0
 var _is_dead: bool = false
 
 @onready var _body: Sprite2D = $Body
 @onready var _name_label: Label = $NameLabel
 @onready var _stat_bar: StatBar = $StatBar
+@onready var buff_container: BuffContainer = $BuffContainer
 
 
 func _ready() -> void:
+	if buff_container:
+		buff_container.buffs_changed.connect(_on_buffs_changed)
 	if base_stats != null:
 		_refresh_ui()
 
@@ -53,7 +61,7 @@ func try_attack(delta: float) -> void:
 	var target := acquire_target()
 	if target == null or not is_instance_valid(target):
 		return
-	if global_position.distance_to(target.global_position) > GameConfig.ATTACK_RANGE:
+	if global_position.distance_to(target.global_position) > attack_range:
 		return
 	_attack_timer -= delta
 	if _attack_timer > 0.0:
@@ -61,7 +69,21 @@ func try_attack(delta: float) -> void:
 	var stats := get_combat_stats()
 	_attack_timer = stats.get_attack_interval()
 	var damage := maxi(1, stats.attack - target.get_combat_stats().defense)
-	target.take_damage(damage)
+	if projectile_speed > 0.0 and _projectile_container != null:
+		_fire_projectile(target, damage)
+	else:
+		target.take_damage(damage)
+
+
+func _fire_projectile(target: CombatUnit, damage: int) -> void:
+	var proj: Projectile = PROJECTILE_SCENE.instantiate()
+	_projectile_container.add_child(proj)
+	proj.global_position = global_position
+	proj.setup(target, damage, projectile_speed, _get_projectile_color())
+
+
+func _get_projectile_color() -> Color:
+	return Color(0.95, 0.85, 0.3)
 
 
 func _die() -> void:
@@ -83,3 +105,8 @@ func _refresh_ui() -> void:
 
 func is_alive() -> bool:
 	return not _is_dead and base_stats != null and base_stats.hp > 0
+
+
+func _on_buffs_changed() -> void:
+	stats_changed.emit()
+	_refresh_ui()
