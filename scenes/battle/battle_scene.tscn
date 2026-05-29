@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" path="res://assets/ui/battle_bg.png" id="10_bg"]
 [ext_resource type="Texture2D" path="res://assets/ui/panel_bg.png" id="11_panel"]
 [ext_resource type="Texture2D" path="res://assets/ui/drop_zone_frame.png" id="12_dz"]
+[ext_resource type="Script" path="res://scripts/battle/next_hand_preview.gd" id="13_next"]
 
 [node name="BattleScene" type="Node2D"]
 script = ExtResource("1_battle")
@@ -26,8 +27,6 @@ stretch_mode = 6
 position = Vector2(180, 320)
 
 [node name="Monsters" type="Node2D" parent="Units"]
-
-[node name="Loot" type="Node2D" parent="Units"]
 
 [node name="Projectiles" type="Node2D" parent="Units"]
 
@@ -50,7 +49,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.6, 0.7, 0.85, 1)
 theme_override_font_sizes/font_size = 13
-text = "拖拽部署；留牌降低英雄能力"
+text = "拖拽部署"
 
 [node name="SurvivalLabel" type="Label" parent="UI/TopBar"]
 layout_mode = 2
@@ -59,27 +58,10 @@ theme_override_font_sizes/font_size = 14
 text = "存活: 0s"
 horizontal_alignment = 2
 
-[node name="HeroZoneFrame" type="ColorRect" parent="UI"]
-offset_left = 40.0
-offset_top = 50.0
-offset_right = 360.0
-offset_bottom = 560.0
-color = Color(0.12, 0.14, 0.2, 0.3)
-
-[node name="HeroZoneLabel" type="Label" parent="UI/HeroZoneFrame"]
-layout_mode = 0
-offset_left = 4.0
-offset_top = 4.0
-offset_right = 80.0
-offset_bottom = 20.0
-theme_override_colors/font_color = Color(0.4, 0.5, 0.7, 0.6)
-theme_override_font_sizes/font_size = 11
-text = "英雄区"
-
 [node name="BattlefieldDropZone" type="Control" parent="UI"]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 700.0
+offset_left = 40.0
 offset_top = 50.0
 offset_right = 1240.0
 offset_bottom = 560.0
@@ -107,7 +89,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.4, 0.55, 0.8, 0.5)
 theme_override_font_sizes/font_size = 16
-text = "部署区"
+text = "战场"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -127,130 +109,6 @@ offset_right = 1260.0
 offset_bottom = 710.0
 theme_override_constants/separation = 6
 
-[node name="EquipmentBar" type="HBoxContainer" parent="UI/BottomPanel"]
-layout_mode = 2
-theme_override_constants/separation = 16
-
-[node name="EquipTitle" type="Label" parent="UI/BottomPanel/EquipmentBar"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
-theme_override_font_sizes/font_size = 13
-text = "装备:"
-
-[node name="WeaponSlot" type="PanelContainer" parent="UI/BottomPanel/EquipmentBar"]
-layout_mode = 2
-custom_minimum_size = Vector2(120, 0)
-
-[node name="HBox" type="HBoxContainer" parent="UI/BottomPanel/EquipmentBar/WeaponSlot"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="Icon" type="TextureRect" parent="UI/BottomPanel/EquipmentBar/WeaponSlot/HBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(24, 24)
-stretch_mode = 5
-
-[node name="VBox" type="VBoxContainer" parent="UI/BottomPanel/EquipmentBar/WeaponSlot/HBox"]
-layout_mode = 2
-
-[node name="WeaponTitle" type="Label" parent="UI/BottomPanel/EquipmentBar/WeaponSlot/HBox/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
-theme_override_font_sizes/font_size = 10
-text = "武器"
-
-[node name="Label" type="Label" parent="UI/BottomPanel/EquipmentBar/WeaponSlot/HBox/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.85, 0.9, 1)
-theme_override_font_sizes/font_size = 12
-text = "[空]"
-
-[node name="ArmorSlot" type="PanelContainer" parent="UI/BottomPanel/EquipmentBar"]
-layout_mode = 2
-custom_minimum_size = Vector2(120, 0)
-
-[node name="HBox" type="HBoxContainer" parent="UI/BottomPanel/EquipmentBar/ArmorSlot"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="Icon" type="TextureRect" parent="UI/BottomPanel/EquipmentBar/ArmorSlot/HBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(24, 24)
-stretch_mode = 5
-
-[node name="VBox" type="VBoxContainer" parent="UI/BottomPanel/EquipmentBar/ArmorSlot/HBox"]
-layout_mode = 2
-
-[node name="ArmorTitle" type="Label" parent="UI/BottomPanel/EquipmentBar/ArmorSlot/HBox/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
-theme_override_font_sizes/font_size = 10
-text = "护甲"
-
-[node name="Label" type="Label" parent="UI/BottomPanel/EquipmentBar/ArmorSlot/HBox/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.85, 0.9, 1)
-theme_override_font_sizes/font_size = 12
-text = "[空]"
-
-[node name="BackpackPanel" type="HBoxContainer" parent="UI/BottomPanel"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="BpTitle" type="Label" parent="UI/BottomPanel/BackpackPanel"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
-theme_override_font_sizes/font_size = 13
-text = "背包:"
-
-[node name="Slot0" type="Button" parent="UI/BottomPanel/BackpackPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(90, 26)
-theme_override_font_sizes/font_size = 11
-text = ""
-
-[node name="Slot1" type="Button" parent="UI/BottomPanel/BackpackPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(90, 26)
-theme_override_font_sizes/font_size = 11
-text = ""
-
-[node name="Slot2" type="Button" parent="UI/BottomPanel/BackpackPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(90, 26)
-theme_override_font_sizes/font_size = 11
-text = ""
-
-[node name="Slot3" type="Button" parent="UI/BottomPanel/BackpackPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(90, 26)
-theme_override_font_sizes/font_size = 11
-text = ""
-
-[node name="Slot4" type="Button" parent="UI/BottomPanel/BackpackPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(90, 26)
-theme_override_font_sizes/font_size = 11
-text = ""
-
-[node name="Slot5" type="Button" parent="UI/BottomPanel/BackpackPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(90, 26)
-theme_override_font_sizes/font_size = 11
-text = ""
-
-[node name="Slot6" type="Button" parent="UI/BottomPanel/BackpackPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(90, 26)
-theme_override_font_sizes/font_size = 11
-text = ""
-
-[node name="Slot7" type="Button" parent="UI/BottomPanel/BackpackPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(90, 26)
-theme_override_font_sizes/font_size = 11
-text = ""
-
 [node name="CardHand" type="HBoxContainer" parent="UI/BottomPanel"]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -260,44 +118,18 @@ script = ExtResource("5_card_hand")
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
 theme_override_font_sizes/font_size = 13
-text = "手牌"
+text = "候选"
 
-[node name="HoldSummary" type="Label" parent="UI/BottomPanel"]
+[node name="NextHandPreview" type="HBoxContainer" parent="UI/BottomPanel"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.95, 0.55, 0.45, 1)
-theme_override_font_sizes/font_size = 12
-text = "持仓：无"
+theme_override_constants/separation = 6
+script = ExtResource("13_next")
 
-[node name="DiscardRow" type="HBoxContainer" parent="UI/BottomPanel"]
+[node name="Title" type="Label" parent="UI/BottomPanel/NextHandPreview"]
 layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="BtnDiscard" type="Button" parent="UI/BottomPanel/DiscardRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(72, 28)
-theme_override_font_sizes/font_size = 12
-text = "弃牌"
-
-[node name="DiscardCooldown" type="Label" parent="UI/BottomPanel/DiscardRow"]
-layout_mode = 2
-size_flags_vertical = 4
-theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 1)
-theme_override_font_sizes/font_size = 12
-text = "弃牌就绪"
-vertical_alignment = 1
-
-[node name="ItemTooltip" type="PanelContainer" parent="UI"]
-visible = false
-offset_left = 400.0
-offset_top = 440.0
-offset_right = 600.0
-offset_bottom = 520.0
-mouse_filter = 2
-
-[node name="TooltipLabel" type="Label" parent="UI/ItemTooltip"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
+theme_override_font_sizes/font_size = 11
+text = "下一批"
 
 [node name="GameOverPanel" type="PanelContainer" parent="UI"]
 visible = false

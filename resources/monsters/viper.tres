@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/monster_data.gd" id="1_monster"]
+[ext_resource type="Script" path="res://data/combat_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="CombatStats_viper"]
+script = ExtResource("2_stats")
+attack = 4
+max_hp = 12
+hp = 12
+defense = 0
+attack_speed = 1.8
+
+[resource]
+script = ExtResource("1_monster")
+id = &"viper"
+display_name = "毒蛇"
+base_stats = SubResource("CombatStats_viper")
+wireframe_color = Color(0.2, 0.75, 0.3, 1)
+move_speed = 95.0

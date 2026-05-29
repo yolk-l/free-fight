@@ -1,149 +1,124 @@
 class_name CardHand
 extends HBoxContainer
 
-signal hold_penalty_changed
-signal card_selected(monster_id: StringName)
-
-const MAX_CARDS := 7
+const HAND_SIZE := GameConfig.HAND_SIZE
 const CARD_UI_SCRIPT := preload("res://scripts/battle/monster_card_ui.gd")
 
-var _card_ids: Array[StringName] = []
-var _card_source_ids: Array[StringName] = []
-var _selected_id: StringName = &""
-var _buff_target: BuffContainer = null
-var _next_source_idx: int = 0
+const MECHANIC_SHORT := {
+	&"slime":    "死亡分裂",
+	&"bat":      "飞行",
+	&"wolf":     "群族加攻",
+	&"goblin":   "死亡爆炸",
+	&"skeleton": "墓碑复活",
+	&"gargoyle": "防御光环",
+	&"viper":    "毒池",
+}
+
+var _candidates: Array[StringName] = []
+var _candidates_elite: Array[bool] = []
+var _next_candidates: Array[StringName] = []
+var _next_elite: Array[bool] = []
+var _draggable: bool = true
+var _cd_remaining: float = 0.0
+var _evolution_tracker = null
+var _card_pool = null
+var _next_preview = null
 
 @onready var _title: Label = $Title
 
 
 func _ready() -> void:
 	if _title:
-		_title.text = "手牌 (拖拽部署 / 点击选中)"
+		_title.text = "候选"
 
 
-func set_buff_target(container: BuffContainer) -> void:
-	_buff_target = container
+func set_evolution_tracker(tracker) -> void:
+	_evolution_tracker = tracker
 
 
-func setup_initial_cards(count: int = 3) -> void:
-	_card_ids.clear()
-	_card_source_ids.clear()
-	_selected_id = &""
-	_next_source_idx = 0
-	for i in count:
-		var mid := DataRegistry.get_random_monster_id()
-		var source := _generate_source_id(mid)
-		_card_ids.append(mid)
-		_card_source_ids.append(source)
-		_apply_hold_debuff_with_source(mid, source)
-	_rebuild_ui()
+func set_card_pool(pool) -> void:
+	_card_pool = pool
 
 
-func add_card(monster_id: StringName) -> bool:
-	if monster_id == &"" or _card_ids.size() >= MAX_CARDS:
-		return false
-	var source := _generate_source_id(monster_id)
-	_card_ids.append(monster_id)
-	_card_source_ids.append(source)
-	_apply_hold_debuff_with_source(monster_id, source)
-	_rebuild_ui()
-	return true
+func set_next_preview(node) -> void:
+	_next_preview = node
+	_update_next_preview_ui()
 
 
-func consume_card(monster_id: StringName) -> void:
-	_remove_card(monster_id)
-
-
-func discard_card(monster_id: StringName) -> bool:
-	if monster_id == &"" or _card_ids.find(monster_id) < 0:
-		return false
-	_remove_card(monster_id)
-	return true
-
-
-func get_selected_monster_id() -> StringName:
-	return _selected_id if _selected_id in _card_ids else &""
-
-
-func set_selected(monster_id: StringName) -> void:
-	if monster_id not in _card_ids:
-		return
-	if _selected_id == monster_id:
-		_selected_id = &""
+func deal_candidates() -> void:
+	if _next_candidates.size() == HAND_SIZE:
+		_candidates = _next_candidates.duplicate()
+		_candidates_elite = _next_elite.duplicate()
+		_next_candidates.clear()
+		_next_elite.clear()
 	else:
-		_selected_id = monster_id
-	card_selected.emit(_selected_id)
+		_candidates.clear()
+		_candidates_elite.clear()
+		_fill_pool(_candidates, _candidates_elite, HAND_SIZE)
+	_fill_pool(_next_candidates, _next_elite, HAND_SIZE)
+	_draggable = true
+	_cd_remaining = 0.0
 	_rebuild_ui()
+	_update_next_preview_ui()
 
 
-func format_hold_summary() -> String:
-	if _buff_target == null:
-		return "持仓：无"
-	var mods := _buff_target.get_all_modifiers()
-	var parts: PackedStringArray = []
-	var atk: float = mods.get("attack", 0.0)
-	var def: float = mods.get("defense", 0.0)
-	var aspd: float = mods.get("attack_speed", 0.0)
-	var bleed: float = mods.get("bleed_per_sec", 0.0)
-	if atk != 0.0:
-		parts.append("攻%+d" % int(atk))
-	if def != 0.0:
-		parts.append("防%+d" % int(def))
-	if absf(aspd) > 0.001:
-		parts.append("攻速%+.0f%%" % (aspd * 100.0))
-	if bleed > 0.0:
-		parts.append("失血%.1f/s" % bleed)
-	if parts.is_empty():
-		return "持仓：无"
-	return "持仓：" + " ".join(parts)
-
-
-static func format_card_hold_hint(data: MonsterData) -> String:
-	if data == null or data.hold_debuff == null:
-		return ""
-	var parts: PackedStringArray = []
-	var mods: Dictionary = data.hold_debuff.modifiers
-	var atk: float = mods.get("attack", 0.0)
-	var def: float = mods.get("defense", 0.0)
-	var bleed: float = mods.get("bleed_per_sec", 0.0)
-	if atk != 0.0:
-		parts.append("攻%+d" % int(atk))
-	if def != 0.0:
-		parts.append("防%+d" % int(def))
-	if bleed > 0.0:
-		parts.append("血%.1f/s" % bleed)
-	if parts.is_empty():
-		return ""
-	return "拿着:" + " ".join(parts)
-
-
-func _apply_hold_debuff_with_source(monster_id: StringName, source: StringName) -> void:
-	if _buff_target == null:
+func _fill_pool(ids: Array[StringName], elites: Array[bool], count: int) -> void:
+	if _card_pool == null:
 		return
-	var data := DataRegistry.get_monster(monster_id)
-	if data == null or data.hold_debuff == null:
-		return
-	_buff_target.add_buff(data.hold_debuff, source)
+	var attempts := 0
+	while ids.size() < count and attempts < 50:
+		attempts += 1
+		var mid: StringName = _card_pool.pick_random()
+		if mid == &"":
+			continue
+		if mid in ids:
+			continue
+		ids.append(mid)
+		elites.append(randf() < GameConfig.ELITE_CHANCE)
 
 
-func _generate_source_id(monster_id: StringName) -> StringName:
-	var sid := StringName("hold_%s_%d" % [str(monster_id), _next_source_idx])
-	_next_source_idx += 1
-	return sid
-
-
-func _remove_card(monster_id: StringName) -> void:
-	var index := _card_ids.find(monster_id)
+func consume_card(monster_id: StringName) -> bool:
+	var index := _candidates.find(monster_id)
 	if index < 0:
-		return
-	var source := _card_source_ids[index]
-	_card_ids.remove_at(index)
-	_card_source_ids.remove_at(index)
-	if _selected_id == monster_id:
-		_selected_id = &""
-	if _buff_target:
-		_buff_target.remove_buff_by_source(source)
+		return false
+	_candidates.clear()
+	_candidates_elite.clear()
+	_draggable = false
+	_cd_remaining = GameConfig.DEPLOY_COOLDOWN_SEC
 	_rebuild_ui()
+	return true
+
+
+func is_consumed_elite(monster_id: StringName) -> bool:
+	var index := _candidates.find(monster_id)
+	if index < 0:
+		return false
+	return _candidates_elite[index]
+
+
+func tick(delta: float) -> void:
+	if _cd_remaining <= 0.0:
+		return
+	_cd_remaining = maxf(0.0, _cd_remaining - delta)
+	_refresh_cd_label()
+	if _cd_remaining <= 0.0:
+		deal_candidates()
+
+
+func refresh_displays() -> void:
+	_rebuild_ui()
+	_update_next_preview_ui()
+
+
+func _refresh_cd_label() -> void:
+	if _title == null:
+		return
+	if _cd_remaining > 0.0:
+		_title.text = "候选刷新中 %.1fs" % _cd_remaining
+	elif _candidates.is_empty():
+		_title.text = "候选"
+	else:
+		_title.text = "候选 (拖拽部署)"
 
 
 func _rebuild_ui() -> void:
@@ -154,30 +129,40 @@ func _rebuild_ui() -> void:
 	for child in to_remove:
 		remove_child(child)
 		child.queue_free()
-	for monster_id in _card_ids:
-		add_child(_create_card_slot(monster_id))
-	hold_penalty_changed.emit()
+	for i in _candidates.size():
+		var is_elite: bool = _candidates_elite[i] if i < _candidates_elite.size() else false
+		add_child(_create_card_slot(_candidates[i], is_elite))
+	_refresh_cd_label()
 
 
-func _create_card_slot(monster_id: StringName) -> MonsterCardUI:
+func _update_next_preview_ui() -> void:
+	if _next_preview and _next_preview.has_method("set_cards"):
+		_next_preview.set_cards(_next_candidates, _next_elite)
+
+
+func _create_card_slot(monster_id: StringName, is_elite: bool) -> MonsterCardUI:
 	var data := DataRegistry.get_monster(monster_id)
 	var panel: MonsterCardUI = CARD_UI_SCRIPT.new()
 	panel.monster_id = monster_id
-	panel.custom_minimum_size = Vector2(100, 88)
+	panel.draggable = _draggable
+	panel.custom_minimum_size = Vector2(140, 120)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var style := StyleBoxFlat.new()
-	style.bg_color = data.wireframe_color.darkened(0.6) if data else WireframeTheme.PANEL
-	var selected := monster_id == _selected_id
-	style.border_color = WireframeTheme.ACCENT if selected else data.wireframe_color.darkened(0.2) if data else WireframeTheme.BORDER
-	style.set_border_width_all(3 if selected else 2)
+	style.bg_color = data.wireframe_color.darkened(0.6) if data else Color(0.12, 0.14, 0.2)
+	if is_elite:
+		style.border_color = Color(1.0, 0.85, 0.2)
+		style.set_border_width_all(3)
+	else:
+		style.border_color = data.wireframe_color.darkened(0.2) if data else Color(0.3, 0.35, 0.5)
+		style.set_border_width_all(2)
 	style.set_corner_radius_all(8)
-	style.set_content_margin_all(4)
+	style.set_content_margin_all(6)
 	panel.add_theme_stylebox_override("panel", style)
-	panel.card_clicked.connect(_on_card_clicked)
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 2)
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var icon := TextureRect.new()
 	var tex_path := "res://assets/monsters/%s.png" % str(monster_id)
@@ -185,27 +170,48 @@ func _create_card_slot(monster_id: StringName) -> MonsterCardUI:
 	if tex:
 		icon.texture = tex
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.custom_minimum_size = Vector2(36, 36)
+	icon.custom_minimum_size = Vector2(40, 40)
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(icon)
+	var name_text: String = (data.display_name if data else str(monster_id))
+	if is_elite:
+		name_text = "★ " + name_text
 	var label := Label.new()
-	label.text = data.display_name if data else str(monster_id)
+	label.text = name_text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.95))
-	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2) if is_elite else Color(0.9, 0.9, 0.95))
+	label.add_theme_font_size_override("font_size", 12)
 	vbox.add_child(label)
-	var hold_label := Label.new()
-	hold_label.text = format_card_hold_hint(data)
-	hold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hold_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hold_label.add_theme_color_override("font_color", Color(0.95, 0.55, 0.45))
-	hold_label.add_theme_font_size_override("font_size", 9)
-	vbox.add_child(hold_label)
+	var mech_label := Label.new()
+	mech_label.text = MECHANIC_SHORT.get(monster_id, "")
+	mech_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mech_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mech_label.add_theme_color_override("font_color", Color(0.6, 0.85, 0.95))
+	mech_label.add_theme_font_size_override("font_size", 10)
+	vbox.add_child(mech_label)
+	var res_label := Label.new()
+	res_label.text = _resonance_text(monster_id)
+	res_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	res_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	res_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6))
+	res_label.add_theme_font_size_override("font_size", 10)
+	vbox.add_child(res_label)
 	panel.add_child(vbox)
+	panel.setup_overlay()
 	return panel
 
 
-func _on_card_clicked(monster_id: StringName) -> void:
-	set_selected(monster_id)
+func _resonance_text(monster_id: StringName) -> String:
+	if _evolution_tracker == null:
+		return ""
+	var progress = _evolution_tracker.get_progress_for_monster(monster_id)
+	if progress == null:
+		return ""
+	var tier: int = progress["tier"]
+	var count: int = progress["count"]
+	var next_threshold: int = progress["next_threshold"]
+	if tier >= 3 or next_threshold <= 0:
+		return "共鸣 MAX"
+	return "共鸣 %d/%d" % [count, next_threshold]

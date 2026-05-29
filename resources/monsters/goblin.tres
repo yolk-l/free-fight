@@ -1,8 +1,7 @@
-[gd_resource type="Resource" script_class="MonsterData" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="MonsterData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://data/monster_data.gd" id="1_monster"]
 [ext_resource type="Script" path="res://data/combat_stats.gd" id="2_stats"]
-[ext_resource type="Resource" path="res://resources/buffs/hold_goblin.tres" id="3_hold_debuff"]
 
 [sub_resource type="Resource" id="CombatStats_goblin"]
 script = ExtResource("2_stats")
@@ -18,5 +17,4 @@ id = &"goblin"
 display_name = "哥布林"
 base_stats = SubResource("CombatStats_goblin")
 wireframe_color = Color(0.9, 0.55, 0.2, 1)
-move_speed = 100.0
-hold_debuff = ExtResource("3_hold_debuff")
+move_speed = 70.0

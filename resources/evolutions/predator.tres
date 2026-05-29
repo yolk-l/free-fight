@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EvolutionPath" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/evolution_path.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+path_id = &"predator"
+display_name = "追猎者"
+monster_type = &"wolf"
+tier1_threshold = 5
+tier1_name = "追猎本能"
+tier1_description = "击杀后下次攻击必暴击(2x)"
+tier2_threshold = 12
+tier2_name = "嗜血追击"
+tier2_description = "暴击伤害 2.5x | 击狼 35% 召共鸣祭坛(6s)"
+tier3_threshold = 20
+tier3_name = "至高猎手"
+tier3_description = "暴击重置 CD | 击狼 60% 召祭坛(8s)"

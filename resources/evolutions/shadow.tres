@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EvolutionPath" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/evolution_path.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+path_id = &"shadow"
+display_name = "幽影"
+monster_type = &"bat"
+tier1_threshold = 5
+tier1_name = "幽影闪避"
+tier1_description = "20% 概率闪避"
+tier2_threshold = 12
+tier2_name = "虚影残像"
+tier2_description = "闪避后下次攻击 +30% (5s) | 击蝙蝠 35% 召圣光圈(6s)"
+tier3_threshold = 20
+tier3_name = "暗影化身"
+tier3_description = "闪避叠加 +5%/层(上限 60%) | 击蝙蝠 60% 召圣光圈(8s)"

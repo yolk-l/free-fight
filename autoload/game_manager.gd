@@ -5,7 +5,6 @@ const BATTLE_SCENE := "res://scenes/battle/battle_scene.tscn"
 const CODEX_SCENE := "res://scenes/codex/codex_scene.tscn"
 
 var codex_unlocked_monsters: Array[StringName] = []
-var codex_unlocked_equipment: Array[StringName] = []
 
 
 func go_to_main_menu() -> void:
@@ -25,11 +24,5 @@ func unlock_monster(monster_id: StringName) -> void:
 		codex_unlocked_monsters.append(monster_id)
 
 
-func unlock_equipment(equipment_id: StringName) -> void:
-	if equipment_id not in codex_unlocked_equipment:
-		codex_unlocked_equipment.append(equipment_id)
-
-
 func reset_codex_for_debug() -> void:
 	codex_unlocked_monsters.clear()
-	codex_unlocked_equipment.clear()

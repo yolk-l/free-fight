@@ -10,7 +10,7 @@ func _ready() -> void:
 
 
 func _on_start_pressed() -> void:
-	GameManager.go_to_battle()
+	RunManager.start_run()
 
 
 func _on_codex_pressed() -> void:

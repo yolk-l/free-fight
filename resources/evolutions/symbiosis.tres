@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EvolutionPath" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/evolution_path.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+path_id = &"symbiosis"
+display_name = "共生"
+monster_type = &"slime"
+tier1_threshold = 7
+tier1_name = "共生回复"
+tier1_description = "受击 25% 概率回血 5"
+tier2_threshold = 15
+tier2_name = "深度共生"
+tier2_description = "回血概率 +15%,量 +3 | 击史莱姆 35% 召共鸣祭坛(6s)"
+tier3_threshold = 25
+tier3_name = "完全融合"
+tier3_description = "满血溢出转护盾 | 击史莱姆 60% 召祭坛(8s)"

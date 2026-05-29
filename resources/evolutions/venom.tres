@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EvolutionPath" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/evolution_path.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+path_id = &"venom"
+display_name = "剧毒"
+monster_type = &"viper"
+tier1_threshold = 5
+tier1_name = "蚀甲毒素"
+tier1_description = "攻击叠毒(上限 5 层,1 伤/s/层)"
+tier2_threshold = 11
+tier2_name = "腐蚀之触"
+tier2_description = "毒达 5 层引爆 15 伤 | 击毒蛇 50% 召腐毒地(6s)"
+tier3_threshold = 18
+tier3_name = "万毒归一"
+tier3_description = "引爆毒传染相邻 2 个 | 击毒蛇 80% 召腐毒地(8s)"

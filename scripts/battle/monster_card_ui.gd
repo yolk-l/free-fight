@@ -1,29 +1,33 @@
 class_name MonsterCardUI
 extends PanelContainer
 
-signal card_clicked(monster_id: StringName)
-
 var monster_id: StringName = &""
+var draggable: bool = true
 
-const CLICK_DRAG_THRESHOLD_PX := 8.0
-
-var _press_pos: Vector2 = Vector2.ZERO
-
-
-func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			_press_pos = event.position
-		elif _press_pos.distance_to(event.position) < CLICK_DRAG_THRESHOLD_PX:
-			card_clicked.emit(monster_id)
+var _disabled_overlay: ColorRect = null
 
 
 func _get_drag_data(_at_position: Vector2) -> Variant:
-	if monster_id == &"":
+	if monster_id == &"" or not draggable:
 		return null
 	var preview := _create_drag_preview()
 	set_drag_preview(preview)
 	return {"monster_id": monster_id}
+
+
+func setup_overlay() -> void:
+	_disabled_overlay = ColorRect.new()
+	_disabled_overlay.color = Color(0.1, 0.1, 0.15, 0.6)
+	_disabled_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_disabled_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_disabled_overlay.visible = not draggable
+	add_child(_disabled_overlay)
+
+
+func set_draggable(value: bool) -> void:
+	draggable = value
+	if _disabled_overlay:
+		_disabled_overlay.visible = not value
 
 
 func _create_drag_preview() -> Control:

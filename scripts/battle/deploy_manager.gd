@@ -16,16 +16,24 @@ func setup(hero: Hero, monster_container: Node2D, controller: Node) -> void:
 	_battle_controller = controller
 
 
-func deploy_monster_at(monster_id: StringName, global_position: Vector2) -> void:
+func deploy_monster_at(monster_id: StringName, pos: Vector2) -> Monster:
 	if monster_id == &"" or _hero == null or _monster_container == null:
-		return
+		return null
 	var data := DataRegistry.get_monster(monster_id)
 	if data == null:
-		return
+		return null
 	var monster: Monster = MONSTER_SCENE.instantiate()
 	_monster_container.add_child(monster)
-	monster.global_position = global_position
+	monster.global_position = pos
 	monster.setup_monster(data, _hero)
+	if RunManager.in_run:
+		var mult := RunManager.get_difficulty_multiplier()
+		if mult > 1.0 and monster.base_stats:
+			monster.base_stats.attack = int(monster.base_stats.attack * mult)
+			monster.base_stats.hp = int(monster.base_stats.hp * mult)
+			monster.base_stats.max_hp = int(monster.base_stats.max_hp * mult)
+			monster._refresh_ui()
 	if _battle_controller:
 		_battle_controller.register_monster(monster)
 	monster_deployed.emit(monster)
+	return monster

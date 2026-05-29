@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EvolutionPath" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/evolution_path.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+path_id = &"undead"
+display_name = "亡灵"
+monster_type = &"skeleton"
+tier1_threshold = 4
+tier1_name = "亡者之力"
+tier1_description = "击杀 20% 概率召唤友方骷髅(5s)"
+tier2_threshold = 9
+tier2_name = "亡魂汲取"
+tier2_description = "召唤概率 +20% | 击骷髅 35% 召暗影域(6s)"
+tier3_threshold = 15
+tier3_name = "死亡领主"
+tier3_description = "亡灵死亡留法阵(4s,3 伤/s) | 击骷髅 60% 召暗影域(8s)"

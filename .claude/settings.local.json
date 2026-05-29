@@ -10,7 +10,25 @@
       "Bash(rm \".claude/plans/freefight_demo_计划_91b9d0d5.plan.md\")",
       "Bash(rm \".claude/rules/development-scope.mdc\")",
       "Bash(python -c \"from PIL import Image; imgs=['assets/monsters/slime.png','assets/monsters/wolf.png','assets/monsters/goblin.png','assets/hero.png','assets/equipment/wood_sword.png','assets/equipment/leather_armor.png']; [print\\(f'{p}: {Image.open\\(p\\).size}'\\) for p in imgs]\")",
-      "Bash(python tools/gen_temp_assets.py)"
+      "Bash(python tools/gen_temp_assets.py)",
+      "Bash(python gen_temp_assets.py)",
+      "Bash(python gen_temp_assets.py skeleton viper)",
+      "Read(//c/Program Files/**)",
+      "Read(//d//**)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --check-only --quit --path D:/learn/free-fight)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --quit-after 10 --path D:/learn/free-fight)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --import --path D:/learn/free-fight)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --check-only --path D:/learn/free-fight --script scripts/battle/battle_controller.gd)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --editor --quit-after 30 --path D:/learn/free-fight)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --path D:/learn/free-fight --quit-after 60 res://scenes/battle/battle_scene.tscn)",
+      "Bash(grep -viE \"^Godot|^D3D|^Vulkan|^$\")",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --path D:/learn/free-fight --quit-after 60)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --path D:/learn/free-fight --quit-after 60 res://scenes/codex/codex_scene.tscn)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --path D:/learn/free-fight --quit-after 120 res://scenes/battle/battle_scene.tscn)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --path D:/learn/free-fight --quit-after 180 res://scenes/battle/battle_scene.tscn)",
+      "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --path D:/learn/free-fight --quit-after 240 res://scenes/battle/battle_scene.tscn)",
+      "Bash(python -c \"from PIL import Image; print\\('PIL available'\\)\")",
+      "Bash(python generate_terrain_icons.py)"
     ]
   }
 }

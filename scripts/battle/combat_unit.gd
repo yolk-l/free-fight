@@ -11,6 +11,11 @@ const PROJECTILE_SCENE := preload("res://scenes/battle/projectile.tscn")
 var base_stats: CombatStats
 var attack_range: float = GameConfig.ATTACK_RANGE
 var projectile_speed: float = 0.0
+var dodge_chance: float = 0.0
+var execute_multiplier: float = 1.0
+var execute_hp_threshold: float = 0.3
+var flat_damage_reduction: int = 0
+var armor_penetration: int = 0
 var _projectile_container: Node2D = null
 var _attack_timer: float = 0.0
 var _is_dead: bool = false
@@ -48,11 +53,45 @@ func acquire_target() -> CombatUnit:
 func take_damage(amount: int) -> void:
 	if _is_dead or base_stats == null:
 		return
-	base_stats.hp = maxi(0, base_stats.hp - amount)
+	if dodge_chance > 0.0 and randf() < dodge_chance:
+		show_floating_number("闪避", Color(0.6, 0.85, 1.0))
+		return
+	var actual := maxi(0, amount - flat_damage_reduction)
+	if actual <= 0:
+		return
+	base_stats.hp = maxi(0, base_stats.hp - actual)
+	show_floating_number("-%d" % actual, _damage_text_color())
 	stats_changed.emit()
 	_refresh_ui()
 	if base_stats.hp <= 0:
 		_die()
+
+
+func _damage_text_color() -> Color:
+	return Color(1.0, 0.95, 0.7)
+
+
+func show_floating_number(text: String, color: Color) -> void:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	label.add_theme_constant_override("outline_size", 3)
+	var jitter := Vector2(randf_range(-8.0, 8.0), randf_range(-4.0, 4.0))
+	label.position = global_position + Vector2(-12, -24) + jitter
+	label.size = Vector2(36, 18)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.z_index = 100
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	scene.add_child(label)
+	var tween := label.create_tween()
+	tween.parallel().tween_property(label, "position:y", label.position.y - 30.0, 0.7)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.7)
+	tween.tween_callback(label.queue_free)
 
 
 func try_attack(delta: float) -> void:
@@ -68,7 +107,17 @@ func try_attack(delta: float) -> void:
 		return
 	var stats := get_combat_stats()
 	_attack_timer = stats.get_attack_interval()
-	var damage := maxi(1, stats.attack - target.get_combat_stats().defense)
+	var total_pen := armor_penetration
+	if buff_container:
+		total_pen += int(buff_container.get_modifier_sum(&"armor_penetration"))
+	var target_def := target.get_combat_stats().defense
+	if total_pen > 0:
+		target_def = maxi(0, target_def - total_pen)
+	var damage := maxi(1, stats.attack - target_def)
+	if execute_multiplier > 1.0 and target.base_stats != null:
+		var hp_ratio := float(target.base_stats.hp) / float(target.base_stats.max_hp)
+		if hp_ratio < execute_hp_threshold:
+			damage = int(damage * execute_multiplier)
 	if projectile_speed > 0.0 and _projectile_container != null:
 		_fire_projectile(target, damage)
 	else:

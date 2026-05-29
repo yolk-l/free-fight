@@ -8,22 +8,23 @@
 script = ExtResource("1_monster")
 
 [node name="Body" type="Sprite2D" parent="."]
+scale = Vector2(0.6, 0.6)
 
 [node name="NameLabel" type="Label" parent="."]
-offset_left = -40.0
-offset_top = -48.0
-offset_right = 40.0
-offset_bottom = -30.0
+offset_left = -28.0
+offset_top = -32.0
+offset_right = 28.0
+offset_bottom = -20.0
 theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 12
 text = "怪物"
 horizontal_alignment = 1
 
 [node name="StatBar" parent="." instance=ExtResource("2_stat_bar")]
-offset_left = -60.0
-offset_top = 32.0
-offset_right = 60.0
-offset_bottom = 80.0
+offset_left = -40.0
+offset_top = 22.0
+offset_right = 40.0
+offset_bottom = 52.0
 
 [node name="BuffContainer" type="Node" parent="."]
 script = ExtResource("3_buff_container")

@@ -1,7 +1,6 @@
-[gd_scene load_steps=6 format=3 uid="uid://hero_unit_scene"]
+[gd_scene load_steps=5 format=3 uid="uid://hero_unit_scene"]
 
 [ext_resource type="Script" path="res://scripts/battle/hero.gd" id="1_hero"]
-[ext_resource type="Script" path="res://scripts/battle/equipment_inventory.gd" id="2_inventory"]
 [ext_resource type="PackedScene" uid="uid://stat_bar_scene" path="res://scenes/battle/ui/stat_bar.tscn" id="3_stat_bar"]
 [ext_resource type="Texture2D" path="res://assets/hero.png" id="4_hero_tex"]
 [ext_resource type="Script" path="res://scripts/battle/buff_container.gd" id="5_buff_container"]
@@ -11,25 +10,23 @@ script = ExtResource("1_hero")
 
 [node name="Body" type="Sprite2D" parent="."]
 texture = ExtResource("4_hero_tex")
+scale = Vector2(0.6, 0.6)
 
 [node name="NameLabel" type="Label" parent="."]
-offset_left = -40.0
-offset_top = -70.0
-offset_right = 40.0
-offset_bottom = -52.0
+offset_left = -28.0
+offset_top = -46.0
+offset_right = 28.0
+offset_bottom = -34.0
 theme_override_colors/font_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 14
 text = "英雄"
 horizontal_alignment = 1
 
 [node name="StatBar" parent="." instance=ExtResource("3_stat_bar")]
-offset_left = -70.0
-offset_top = 55.0
-offset_right = 70.0
-offset_bottom = 103.0
-
-[node name="EquipmentInventory" type="Node" parent="."]
-script = ExtResource("2_inventory")
+offset_left = -46.0
+offset_top = 36.0
+offset_right = 46.0
+offset_bottom = 66.0
 
 [node name="BuffContainer" type="Node" parent="."]
 script = ExtResource("5_buff_container")

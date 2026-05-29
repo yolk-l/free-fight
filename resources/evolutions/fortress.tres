@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EvolutionPath" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/evolution_path.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+path_id = &"fortress"
+display_name = "磐石"
+monster_type = &"gargoyle"
+tier1_threshold = 4
+tier1_name = "磐石护甲"
+tier1_description = "每 5s 获得 1 层护盾(吸 5 伤,最多 3 层)"
+tier2_threshold = 9
+tier2_name = "岩铸之躯"
+tier2_description = "每 3s 一层 | 击石像鬼 35% 召共鸣节点(6s)"
+tier3_threshold = 15
+tier3_name = "不朽石像"
+tier3_description = "护盾破碎反伤 10 | 击石像鬼 60% 召节点(8s)"
