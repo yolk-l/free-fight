@@ -5,6 +5,7 @@ var monster_id: StringName = &""
 var draggable: bool = true
 
 var _disabled_overlay: ColorRect = null
+var _cd_label: Label = null
 
 
 func _get_drag_data(_at_position: Vector2) -> Variant:
@@ -22,12 +23,39 @@ func setup_overlay() -> void:
 	_disabled_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_disabled_overlay.visible = not draggable
 	add_child(_disabled_overlay)
+	_cd_label = Label.new()
+	_cd_label.add_theme_font_size_override("font_size", 18)
+	_cd_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.8))
+	_cd_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	_cd_label.add_theme_constant_override("outline_size", 3)
+	_cd_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cd_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_cd_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_cd_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cd_label.visible = false
+	add_child(_cd_label)
 
 
 func set_draggable(value: bool) -> void:
 	draggable = value
 	if _disabled_overlay:
 		_disabled_overlay.visible = not value
+
+
+func update_cd(remaining: float) -> void:
+	if remaining > 0.0:
+		draggable = false
+		if _disabled_overlay:
+			_disabled_overlay.visible = true
+		if _cd_label:
+			_cd_label.text = "%.1fs" % remaining
+			_cd_label.visible = true
+	else:
+		draggable = true
+		if _disabled_overlay:
+			_disabled_overlay.visible = false
+		if _cd_label:
+			_cd_label.visible = false
 
 
 func _create_drag_preview() -> Control:

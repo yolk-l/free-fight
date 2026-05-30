@@ -17,6 +17,17 @@ var _stationary_timer: float = 0.0
 var _stationary_buff_active: bool = false
 var _tombstone_active: bool = false
 
+var split_count: int = 2
+var explosion_radius: float = 80.0
+var explosion_damage: int = 8
+var pack_range: float = 200.0
+var pack_aspd_mult: float = 1.5
+var resurrection_hp: int = 10
+var skip_tombstone: bool = false
+var aura_radius: float = 150.0
+var aura_def_bonus: int = 2
+var poison_puddle_duration_mult: float = 1.0
+
 var _hero: Hero = null
 var _battle_controller: Node = null
 
@@ -86,17 +97,15 @@ func get_combat_stats() -> CombatStats:
 	if _shadow_attack_bonus > 0.0:
 		stats.attack = int(stats.attack * (1.0 + _shadow_attack_bonus))
 	if pack_buff and _battle_controller != null and _has_pack_nearby():
-		stats.attack_speed *= 1.5
-	if _battle_controller != null and _has_gargoyle_aura():
-		stats.defense += 2
+		stats.attack_speed *= pack_aspd_mult
+	if _battle_controller != null:
+		stats.defense += _get_gargoyle_aura_bonus()
 	return stats
 
 
-func _has_gargoyle_aura() -> bool:
-	# Stationary gargoyles within 150px grant +2 defense to allies.
+func _get_gargoyle_aura_bonus() -> int:
 	if data != null and data.id == &"gargoyle":
-		return false
-	var aura_radius := 150.0
+		return 0
 	var monsters: Array = _battle_controller.get("_monsters") if "_monsters" in _battle_controller else []
 	for m in monsters:
 		if m == self or not is_instance_valid(m) or not m.is_alive():
@@ -107,13 +116,13 @@ func _has_gargoyle_aura() -> bool:
 			continue
 		if not m._stationary_buff_active:
 			continue
-		if global_position.distance_to(m.global_position) <= aura_radius:
-			return true
-	return false
+		if global_position.distance_to(m.global_position) <= m.aura_radius:
+			return m.aura_def_bonus
+	return 0
 
 
 func _has_pack_nearby() -> bool:
-	var pack_radius := 200.0
+	var pack_radius := pack_range
 	var monsters: Array = _battle_controller.get("_monsters") if "_monsters" in _battle_controller else []
 	for m in monsters:
 		if m == self or not is_instance_valid(m) or not m.is_alive():
@@ -162,9 +171,16 @@ func _die() -> void:
 	if _is_dead:
 		return
 	if has_resurrection and not _tombstone_active:
+		if skip_tombstone:
+			base_stats.max_hp = resurrection_hp
+			base_stats.hp = resurrection_hp
+			has_resurrection = false
+			stats_changed.emit()
+			_refresh_ui()
+			return
 		_tombstone_active = true
-		base_stats.max_hp = 10
-		base_stats.hp = 10
+		base_stats.max_hp = resurrection_hp
+		base_stats.hp = resurrection_hp
 		if _body:
 			_body.modulate = Color(0.5, 0.5, 0.55)
 			_body.scale = _body.scale * 0.7

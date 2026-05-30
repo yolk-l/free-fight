@@ -66,6 +66,7 @@ var emergency_summon_used: bool = false
 var summon_terrain_on_kill: Dictionary = {}
 
 var move_speed: float = GameConfig.HERO_MOVE_SPEED
+var _locked_target: CombatUnit = null
 
 
 func _ready() -> void:
@@ -123,7 +124,10 @@ func _refresh_ui() -> void:
 func acquire_target() -> CombatUnit:
 	if _battle_controller == null:
 		return null
-	return _battle_controller.get_nearest_monster_to(global_position)
+	if _locked_target != null and is_instance_valid(_locked_target) and _locked_target.is_alive():
+		return _locked_target
+	_locked_target = _battle_controller.get_nearest_monster_to(global_position)
+	return _locked_target
 
 
 func tick_combat(delta: float) -> void:

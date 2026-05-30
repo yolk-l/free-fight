@@ -52,9 +52,10 @@ func _ready() -> void:
 	_terrain_system = TerrainSystem.new()
 	_terrain_system.name = "TerrainSystem"
 	add_child(_terrain_system)
+	move_child(_terrain_system, $Background.get_index() + 1)
 	_terrain_system.setup(_hero, self)
 	_terrain_system.effect_triggered.connect(_on_terrain_effect_triggered)
-	_terrain_system.generate_map_terrain(randi_range(3, 4))
+	_terrain_system.generate_map_terrain()
 	_combo_tracker = ComboTracker.new()
 	_combo_tracker.name = "ComboTracker"
 	add_child(_combo_tracker)
@@ -298,13 +299,58 @@ func _on_monster_deployed(monster: Monster) -> void:
 
 
 func _apply_map_terrain_on_deploy(monster: Monster) -> void:
-	if _terrain_system == null or monster.base_stats == null:
+	if _terrain_system == null or monster.data == null:
 		return
 	var kind := _terrain_system.get_map_terrain_at(monster.global_position)
-	if kind == MapTerrainType.Kind.ROCKY_GROUND:
-		monster.base_stats.defense += 2
-		monster._refresh_ui()
-		_show_floating_text(monster.global_position, "岩地 +2防", Color(0.55, 0.5, 0.4))
+	if kind < 0:
+		return
+	var mid := monster.data.id
+	var pos := monster.global_position
+	match kind:
+		MapTerrainType.Kind.GRASSLAND:
+			if mid == &"wolf":
+				monster.pack_range = 400.0
+				_show_floating_text(pos, "草原: 群感增强!", Color(0.45, 0.7, 0.3))
+			elif mid == &"goblin":
+				monster.explosion_radius = 120.0
+				_show_floating_text(pos, "草原: 爆炸扩散!", Color(0.45, 0.7, 0.3))
+		MapTerrainType.Kind.DESERT:
+			if mid == &"slime":
+				monster.death_splits = false
+				_show_floating_text(pos, "沙漠: 无法分裂", Color(0.85, 0.75, 0.4))
+			elif mid == &"gargoyle":
+				monster.aura_radius = 225.0
+				_show_floating_text(pos, "沙漠: 光环扩展!", Color(0.85, 0.75, 0.4))
+			elif mid == &"viper":
+				monster.poison_puddle_duration_mult = 2.0
+				_show_floating_text(pos, "沙漠: 毒液浓缩!", Color(0.85, 0.75, 0.4))
+		MapTerrainType.Kind.MOUNTAIN:
+			if mid == &"goblin":
+				monster.explosion_damage = 12
+				_show_floating_text(pos, "山地: 爆炸增伤!", Color(0.55, 0.5, 0.45))
+			elif mid == &"skeleton":
+				monster.resurrection_hp = 20
+				_show_floating_text(pos, "山地: 复活增强!", Color(0.55, 0.5, 0.45))
+			elif mid == &"gargoyle":
+				monster.aura_def_bonus = 4
+				_show_floating_text(pos, "山地: 防御光环↑!", Color(0.55, 0.5, 0.45))
+		MapTerrainType.Kind.LAKE:
+			if mid == &"slime":
+				monster.split_count = 3
+				_show_floating_text(pos, "湖泊: 多重分裂!", Color(0.3, 0.55, 0.85))
+			elif mid == &"bat":
+				monster.is_flying = false
+				_show_floating_text(pos, "湖泊: 失去飞行!", Color(0.3, 0.55, 0.85))
+			elif mid == &"viper":
+				monster.death_poison_puddle = false
+				_show_floating_text(pos, "湖泊: 毒素稀释", Color(0.3, 0.55, 0.85))
+		MapTerrainType.Kind.FOREST:
+			if mid == &"wolf":
+				monster.pack_aspd_mult = 3.0
+				_show_floating_text(pos, "森林: 群攻速↑!", Color(0.2, 0.5, 0.25))
+			elif mid == &"skeleton":
+				monster.skip_tombstone = true
+				_show_floating_text(pos, "森林: 速复活!", Color(0.2, 0.5, 0.25))
 
 
 func _on_monster_died(_unit: CombatUnit, monster: Monster) -> void:
@@ -314,13 +360,8 @@ func _on_monster_died(_unit: CombatUnit, monster: Monster) -> void:
 	if _terrain_system != null:
 		resonance_mult = _terrain_system.on_monster_died(monster, death_pos)
 	_handle_death_mechanics(monster, death_pos)
-	var map_terrain := _terrain_system.get_map_terrain_at(death_pos) if _terrain_system else -1
-	var stat_mult := 1.0
-	if map_terrain == MapTerrainType.Kind.CRYSTAL_MINE:
-		stat_mult = 1.5
-		_show_floating_text(death_pos, "水晶矿 x1.5!", Color(0.7, 0.4, 0.85))
 	if monster.data and RunManager.in_run:
-		_apply_kill_stat_gain(monster.data.id, stat_mult)
+		_apply_kill_stat_gain(monster.data.id)
 		if monster.is_elite:
 			_apply_kill_stat_gain(monster.data.id)
 	if _evolution_tracker and monster.data:
@@ -346,11 +387,6 @@ func _on_monster_died(_unit: CombatUnit, monster: Monster) -> void:
 		var effective := _hero.get_combat_stats()
 		_hero.base_stats.hp = mini(_hero.base_stats.hp + _hero.kill_heal, effective.max_hp)
 		_hero.refresh_display()
-	if map_terrain == MapTerrainType.Kind.SPIRIT_SPRING and is_instance_valid(_hero) and _hero.is_alive():
-		var eff := _hero.get_combat_stats()
-		_hero.base_stats.hp = mini(_hero.base_stats.hp + 5, eff.max_hp)
-		_hero.refresh_display()
-		_show_floating_text(death_pos, "灵泉 +5HP", Color(0.4, 0.7, 1.0))
 	_monsters.erase(monster)
 	_kill_count += 1
 	_check_battle_win()
@@ -416,14 +452,15 @@ func _handle_death_mechanics(monster: Monster, pos: Vector2) -> void:
 	if monster.death_explodes:
 		_trigger_goblin_explosion(pos, monster)
 	if monster.death_splits:
-		_spawn_slime_splits(pos)
+		_spawn_slime_splits(pos, monster.split_count)
 	if monster.death_poison_puddle and _terrain_system:
-		_terrain_system.spawn_poison_puddle(pos)
+		var dur := TerrainSystem.POISON_PUDDLE_DURATION * monster.poison_puddle_duration_mult
+		_terrain_system.spawn_poison_puddle(pos, dur)
 
 
 func _trigger_goblin_explosion(pos: Vector2, source: Monster) -> void:
-	var radius := 80.0
-	var damage := 8
+	var radius := source.explosion_radius
+	var damage := source.explosion_damage
 	for m in _monsters:
 		if m == source or not is_instance_valid(m) or not m.is_alive():
 			continue
@@ -433,11 +470,11 @@ func _trigger_goblin_explosion(pos: Vector2, source: Monster) -> void:
 		_hero.take_damage(damage)
 
 
-func _spawn_slime_splits(pos: Vector2) -> void:
+func _spawn_slime_splits(pos: Vector2, count: int = 2) -> void:
 	var data := DataRegistry.get_monster(&"slime")
 	if data == null:
 		return
-	for i in 2:
+	for i in count:
 		var small_data: MonsterData = data.duplicate()
 		small_data.base_stats = data.base_stats.duplicate_stats()
 		small_data.base_stats.attack = 1
