@@ -75,6 +75,7 @@ func _ready() -> void:
 	_card_hand_node.set_next_preview(_next_hand_preview)
 	_card_hand_node.deal_candidates()
 	_deploy_manager.monster_deployed.connect(_on_monster_deployed)
+	_drop_zone.set_terrain_system(_terrain_system)
 	_drop_zone.card_dropped.connect(_on_card_dropped)
 	_hero.died.connect(_on_hero_died)
 	var restart_btn: Button = _game_over_panel.get_node_or_null("VBox/BtnRestart")
@@ -296,6 +297,7 @@ func _on_monster_deployed(monster: Monster) -> void:
 	if _combo_tracker and monster.data:
 		_combo_tracker.on_monster_deployed(monster.data.id, monster)
 	_apply_map_terrain_on_deploy(monster)
+	_refresh_combo_hint()
 
 
 func _apply_map_terrain_on_deploy(monster: Monster) -> void:
@@ -389,6 +391,7 @@ func _on_monster_died(_unit: CombatUnit, monster: Monster) -> void:
 		_hero.refresh_display()
 	_monsters.erase(monster)
 	_kill_count += 1
+	_show_kill_milestone(_kill_count, death_pos)
 	_check_battle_win()
 
 
@@ -412,6 +415,62 @@ func _show_floating_text(world_pos: Vector2, text: String, color: Color) -> void
 	tween.parallel().tween_property(label, "position:y", label.position.y - 36.0, 0.9)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.9)
 	tween.tween_callback(label.queue_free)
+
+
+func _show_kill_milestone(count: int, pos: Vector2) -> void:
+	var text := ""
+	var color := Color(1.0, 0.95, 0.5)
+	match count:
+		1:
+			text = "首杀!"
+			color = Color(0.3, 1.0, 0.5)
+		3:
+			text = "连杀 x3!"
+			color = Color(0.4, 0.9, 1.0)
+		5:
+			text = "连杀 x5!"
+			color = Color(1.0, 0.85, 0.2)
+		10:
+			text = "10 杀!"
+			color = Color(1.0, 0.6, 0.2)
+	if text.is_empty():
+		return
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 22)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	label.add_theme_constant_override("outline_size", 5)
+	label.position = pos - Vector2(40, 40)
+	label.size = Vector2(80, 30)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(label)
+	var tween := create_tween()
+	tween.parallel().tween_property(label, "position:y", label.position.y - 50.0, 1.2)
+	tween.parallel().tween_property(label, "scale", Vector2(1.3, 1.3), 0.15)
+	tween.tween_property(label, "scale", Vector2(1.0, 1.0), 0.1)
+	tween.tween_property(label, "modulate:a", 0.0, 0.8)
+	tween.tween_callback(label.queue_free)
+
+
+func _show_stat_gain_text(stat_delta: Dictionary) -> void:
+	if not is_instance_valid(_hero):
+		return
+	var parts: PackedStringArray = []
+	if stat_delta["attack"] != 0:
+		parts.append("攻+%d" % stat_delta["attack"])
+	if stat_delta["defense"] != 0:
+		parts.append("防+%d" % stat_delta["defense"])
+	if absf(stat_delta["attack_speed"]) > 0.001:
+		parts.append("速+%.2f" % stat_delta["attack_speed"])
+	if stat_delta["armor_penetration"] != 0:
+		parts.append("穿+%d" % stat_delta["armor_penetration"])
+	if stat_delta["max_hp"] != 0:
+		parts.append("HP+%d" % stat_delta["max_hp"])
+	if parts.is_empty():
+		return
+	_hero.show_floating_number(" ".join(parts), Color(0.5, 1.0, 0.7))
 
 
 func _maybe_summon_terrain(monster_id: StringName, pos: Vector2) -> void:
@@ -514,6 +573,7 @@ func _apply_kill_stat_gain(monster_id: StringName, multiplier: float = 1.0) -> v
 		changed = true
 	if changed:
 		_hero.refresh_display()
+		_show_stat_gain_text(delta)
 
 
 func _apply_predator_kill_buff(_tier: int) -> void:
@@ -548,17 +608,15 @@ func _unhandled_input(event: InputEvent) -> void:
 func _setup_evolution_ui() -> void:
 	_evolution_panel = HBoxContainer.new()
 	_evolution_panel.name = "EvolutionPanel"
-	_evolution_panel.position = Vector2(20, 42)
-	_evolution_panel.add_theme_constant_override("separation", 10)
+	_evolution_panel.position = Vector2(10, 42)
+	_evolution_panel.add_theme_constant_override("separation", 6)
 	$UI.add_child(_evolution_panel)
 	for progress in _evolution_tracker.get_all_progress():
 		var lbl := Label.new()
-		lbl.add_theme_font_size_override("font_size", 10)
-		lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.85, 0.8))
-		if progress["next_threshold"] > 0:
-			lbl.text = "%s: 0/%d" % [progress["display_name"], progress["next_threshold"]]
-		else:
-			lbl.text = "%s: MAX" % progress["display_name"]
+		lbl.add_theme_font_size_override("font_size", 12)
+		lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.7, 0.5))
+		lbl.text = ""
+		lbl.visible = false
 		_evolution_panel.add_child(lbl)
 		_evolution_progress_labels[progress["path_id"]] = lbl
 	_evolution_label = Label.new()
@@ -572,8 +630,8 @@ func _setup_evolution_ui() -> void:
 	$UI.add_child(_evolution_label)
 	_hybrid_panel_label = Label.new()
 	_hybrid_panel_label.name = "HybridPanelLabel"
-	_hybrid_panel_label.position = Vector2(20, 58)
-	_hybrid_panel_label.add_theme_font_size_override("font_size", 10)
+	_hybrid_panel_label.position = Vector2(10, 62)
+	_hybrid_panel_label.add_theme_font_size_override("font_size", 12)
 	_hybrid_panel_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.3, 0.9))
 	_hybrid_panel_label.visible = false
 	$UI.add_child(_hybrid_panel_label)
@@ -714,14 +772,20 @@ func _refresh_evolution_ui() -> void:
 		if lbl == null:
 			continue
 		var tier: int = progress["tier"]
+		var count: int = progress["count"]
+		if count == 0 and tier == 0:
+			lbl.visible = false
+			continue
+		lbl.visible = true
 		if tier >= 1 and progress["next_threshold"] > 0:
-			lbl.text = "%s %s: %d/%d" % [progress["display_name"], _roman(tier), progress["count"], progress["next_threshold"]]
+			lbl.text = "%s%s %d/%d" % [progress["display_name"], _roman(tier), count, progress["next_threshold"]]
 			lbl.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
 		elif tier >= 1:
-			lbl.text = "%s %s: MAX" % [progress["display_name"], _roman(tier)]
+			lbl.text = "%s%s MAX" % [progress["display_name"], _roman(tier)]
 			lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
 		else:
-			lbl.text = "%s: %d/%d" % [progress["display_name"], progress["count"], progress["next_threshold"]]
+			lbl.text = "%s %d/%d" % [progress["display_name"], count, progress["next_threshold"]]
+			lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.85, 0.8))
 
 
 func _show_evolution_text(text: String) -> void:
@@ -795,9 +859,19 @@ func _setup_combo_ui() -> void:
 	_combo_label.size = Vector2(200, 40)
 	_combo_label.visible = false
 	$UI.add_child(_combo_label)
+	_combo_hint_label = Label.new()
+	_combo_hint_label.name = "ComboHintLabel"
+	_combo_hint_label.add_theme_font_size_override("font_size", 11)
+	_combo_hint_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5, 0.75))
+	_combo_hint_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
+	_combo_hint_label.add_theme_constant_override("outline_size", 2)
+	_combo_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_combo_hint_label.visible = false
+	$UI/BottomPanel.add_child(_combo_hint_label)
 
 
 var _eco_spec_bonus: Dictionary = {}  # monster_id -> pending extra kill count for next kill
+var _combo_hint_label: Label = null
 
 
 func _on_pattern_triggered(kind: int, payload: Dictionary) -> void:
@@ -875,6 +949,28 @@ func _show_combo_text(text: String) -> void:
 	tween.tween_interval(1.0)
 	tween.tween_property(_combo_label, "modulate:a", 0.0, 1.0)
 	tween.tween_callback(_combo_label.set.bind("visible", false))
+
+
+func _refresh_combo_hint() -> void:
+	if _combo_hint_label == null or _combo_tracker == null:
+		return
+	var last_id := _combo_tracker.get_last_deployed_id()
+	if last_id == &"":
+		_combo_hint_label.visible = false
+		return
+	var last_data := DataRegistry.get_monster(last_id)
+	var last_name: String = last_data.display_name if last_data else str(last_id)
+	var hints: PackedStringArray = []
+	for recipe in ComboTracker.DUO_RECIPES:
+		if recipe["seq"][0] == last_id:
+			var next_data := DataRegistry.get_monster(recipe["seq"][1])
+			var next_name: String = next_data.display_name if next_data else str(recipe["seq"][1])
+			hints.append("+%s=%s" % [next_name, recipe["name"]])
+	if hints.is_empty():
+		_combo_hint_label.text = "上次: %s" % last_name
+	else:
+		_combo_hint_label.text = "上次: %s | %s" % [last_name, " ".join(hints)]
+	_combo_hint_label.visible = true
 
 
 func _setup_progress_ui() -> void:

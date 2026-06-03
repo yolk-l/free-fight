@@ -204,6 +204,17 @@ func tick_combat(delta: float) -> void:
 		try_attack(delta)
 
 
+func _draw() -> void:
+	if not is_alive():
+		return
+	if _stationary_buff_active and data != null and data.id == &"gargoyle":
+		draw_arc(Vector2.ZERO, aura_radius, 0, TAU, 32, Color(0.6, 0.5, 0.9, 0.2), 1.5)
+	if pack_buff and data != null and data.id == &"wolf":
+		draw_arc(Vector2.ZERO, pack_range, 0, TAU, 32, Color(0.8, 0.6, 0.2, 0.15), 1.0)
+	if death_explodes and data != null and data.id == &"goblin":
+		draw_arc(Vector2.ZERO, explosion_radius, 0, TAU, 24, Color(0.95, 0.3, 0.2, 0.15), 1.0)
+
+
 func _tick_poison(delta: float) -> void:
 	if poison_stacks <= 0:
 		return

@@ -68,6 +68,20 @@ var summon_terrain_on_kill: Dictionary = {}
 var move_speed: float = GameConfig.HERO_MOVE_SPEED
 var _locked_target: CombatUnit = null
 
+# Grid movement state
+var grid_mode: bool = false
+var grid_cell := Vector2i.ZERO
+var _grid_path: Array[Vector2i] = []
+var _grid_step_timer: float = 0.0
+var _grid_step_from := Vector2.ZERO
+var _grid_step_to := Vector2.ZERO
+var _grid_moving: bool = false
+var _grid_speed_mult: float = 1.0
+const GRID_STEP_TIME := 0.3
+
+signal arrived_at_cell(cell: Vector2i)
+signal path_finished
+
 
 func _ready() -> void:
 	super._ready()
@@ -136,6 +150,9 @@ func tick_combat(delta: float) -> void:
 	_tick_shield_regen(delta)
 	_tick_dodge_buff(delta)
 	_tick_hp_regen(delta)
+	if grid_mode:
+		_tick_grid_movement(delta)
+		return
 	var target := acquire_target()
 	if target == null or not is_instance_valid(target):
 		return
@@ -145,6 +162,59 @@ func tick_combat(delta: float) -> void:
 		global_position += dir * move_speed * delta
 	else:
 		try_attack(delta)
+
+
+func _tick_grid_movement(delta: float) -> void:
+	var target := acquire_target()
+	if target != null and is_instance_valid(target) and target.is_alive():
+		var dist := global_position.distance_to(target.global_position)
+		if dist <= attack_range:
+			_grid_moving = false
+			_grid_path.clear()
+			try_attack(delta)
+			return
+	if _grid_moving:
+		var speed_mult := _grid_speed_mult
+		if buff_container:
+			var slow := buff_container.get_modifier_sum(&"move_speed_mult")
+			if slow > 0.0 and slow < 1.0:
+				speed_mult *= slow
+		var step_time := GRID_STEP_TIME / maxf(0.1, speed_mult)
+		_grid_step_timer += delta
+		var t := clampf(_grid_step_timer / step_time, 0.0, 1.0)
+		global_position = _grid_step_from.lerp(_grid_step_to, t)
+		if t >= 1.0:
+			_grid_moving = false
+			global_position = _grid_step_to
+			arrived_at_cell.emit(grid_cell)
+	elif not _grid_path.is_empty():
+		_start_next_grid_step()
+
+
+func _start_next_grid_step() -> void:
+	if _grid_path.is_empty():
+		path_finished.emit()
+		return
+	var next_cell := _grid_path[0]
+	_grid_path.remove_at(0)
+	grid_cell = next_cell
+	_grid_step_from = global_position
+	_grid_step_to = Vector2(
+		next_cell.x * DungeonGrid.CELL_SIZE + DungeonGrid.CELL_SIZE * 0.5,
+		next_cell.y * DungeonGrid.CELL_SIZE + DungeonGrid.CELL_SIZE * 0.5
+	)
+	_grid_step_timer = 0.0
+	_grid_moving = true
+
+
+func set_grid_path(path: Array[Vector2i]) -> void:
+	_grid_path = path
+	if not _grid_moving and not _grid_path.is_empty():
+		_start_next_grid_step()
+
+
+func is_grid_idle() -> bool:
+	return not _grid_moving and _grid_path.is_empty()
 
 
 func _tick_shield_regen(delta: float) -> void:

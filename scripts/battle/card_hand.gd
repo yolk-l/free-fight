@@ -2,7 +2,7 @@ class_name CardHand
 extends HBoxContainer
 
 const HAND_SIZE := GameConfig.HAND_SIZE
-const SLOT_CD := GameConfig.SLOT_COOLDOWN_SEC
+const DEPLOY_CD := GameConfig.DEPLOY_COOLDOWN_SEC
 const CARD_UI_SCRIPT := preload("res://scripts/battle/monster_card_ui.gd")
 
 const MECHANIC_SHORT := {
@@ -15,10 +15,13 @@ const MECHANIC_SHORT := {
 	&"viper":    "毒池",
 }
 
-var _slots: Array[Dictionary] = []
+var _current_slots: Array[Dictionary] = []
+var _next_slots: Array[Dictionary] = []
 var _slot_uis: Array[MonsterCardUI] = []
+var _global_cd: float = 0.0
 var _evolution_tracker = null
 var _card_pool = null
+var _next_preview_node: NextHandPreview = null
 
 @onready var _title: Label = $Title
 
@@ -36,70 +39,66 @@ func set_card_pool(pool) -> void:
 	_card_pool = pool
 
 
-func set_next_preview(_node) -> void:
-	pass
+func set_next_preview(node) -> void:
+	_next_preview_node = node
 
 
-func init_slots() -> void:
-	_slots.clear()
-	var used: Array[StringName] = []
-	for i in HAND_SIZE:
-		var mid := _pick_random_card(used)
-		var is_elite := randf() < GameConfig.ELITE_CHANCE
-		_slots.append({"monster_id": mid, "is_elite": is_elite, "cd": 0.0})
-		used.append(mid)
-	_rebuild_ui()
-
-
-# Keep backward compat name for BattleController
 func deal_candidates() -> void:
-	init_slots()
+	_current_slots = _generate_hand()
+	_next_slots = _generate_hand()
+	_global_cd = 0.0
+	_rebuild_ui()
+	_update_next_preview()
 
 
 func consume_card(monster_id: StringName) -> bool:
-	for i in _slots.size():
-		if _slots[i]["monster_id"] == monster_id and _slots[i]["cd"] <= 0.0:
-			_slots[i]["cd"] = SLOT_CD
-			_update_slot_ui(i)
-			_refresh_title()
-			return true
-	return false
+	if _global_cd > 0.0:
+		return false
+	var found := false
+	for slot in _current_slots:
+		if slot["monster_id"] == monster_id:
+			found = true
+			break
+	if not found:
+		return false
+	_global_cd = DEPLOY_CD
+	_set_all_disabled(true)
+	return true
 
 
 func is_consumed_elite(monster_id: StringName) -> bool:
-	for slot in _slots:
-		if slot["monster_id"] == monster_id and slot["cd"] <= 0.0:
+	for slot in _current_slots:
+		if slot["monster_id"] == monster_id:
 			return slot["is_elite"]
 	return false
 
 
 func tick(delta: float) -> void:
-	var any_refreshed := false
-	for i in _slots.size():
-		if _slots[i]["cd"] <= 0.0:
-			continue
-		_slots[i]["cd"] = maxf(0.0, _slots[i]["cd"] - delta)
-		if _slots[i]["cd"] <= 0.0:
-			_refill_slot(i)
-			any_refreshed = true
-		_update_slot_ui(i)
-	if any_refreshed:
-		_refresh_title()
+	if _global_cd <= 0.0:
+		return
+	_global_cd = maxf(0.0, _global_cd - delta)
+	if _global_cd <= 0.0:
+		_current_slots = _next_slots.duplicate(true)
+		_next_slots = _generate_hand()
+		_rebuild_ui()
+		_update_next_preview()
+	else:
+		_update_cd_display()
 
 
 func refresh_displays() -> void:
 	_rebuild_ui()
 
 
-func _refill_slot(index: int) -> void:
+func _generate_hand() -> Array[Dictionary]:
+	var hand: Array[Dictionary] = []
 	var used: Array[StringName] = []
-	for i in _slots.size():
-		if i != index and _slots[i]["cd"] <= 0.0:
-			used.append(_slots[i]["monster_id"])
-	var mid := _pick_random_card(used)
-	_slots[index]["monster_id"] = mid
-	_slots[index]["is_elite"] = randf() < GameConfig.ELITE_CHANCE
-	_slots[index]["cd"] = 0.0
+	for i in HAND_SIZE:
+		var mid := _pick_random_card(used)
+		var is_elite := randf() < GameConfig.ELITE_CHANCE
+		hand.append({"monster_id": mid, "is_elite": is_elite})
+		used.append(mid)
+	return hand
 
 
 func _pick_random_card(exclude: Array[StringName]) -> StringName:
@@ -119,14 +118,36 @@ func _pick_random_card(exclude: Array[StringName]) -> StringName:
 	return &""
 
 
+func _set_all_disabled(disabled: bool) -> void:
+	for ui in _slot_uis:
+		if is_instance_valid(ui):
+			if disabled:
+				ui.update_cd(_global_cd)
+			else:
+				ui.update_cd(0.0)
+
+
+func _update_cd_display() -> void:
+	for ui in _slot_uis:
+		if is_instance_valid(ui):
+			ui.update_cd(_global_cd)
+
+
+func _update_next_preview() -> void:
+	if _next_preview_node == null:
+		return
+	var ids: Array = []
+	var elites: Array = []
+	for slot in _next_slots:
+		ids.append(slot["monster_id"])
+		elites.append(slot["is_elite"])
+	_next_preview_node.set_cards(ids, elites)
+
+
 func _refresh_title() -> void:
 	if _title == null:
 		return
-	var available := 0
-	for slot in _slots:
-		if slot["cd"] <= 0.0:
-			available += 1
-	if available == 0:
+	if _global_cd > 0.0:
 		_title.text = "冷却中..."
 	else:
 		_title.text = "候选 (拖拽部署)"
@@ -141,73 +162,22 @@ func _rebuild_ui() -> void:
 		remove_child(child)
 		child.queue_free()
 	_slot_uis.clear()
-	for i in _slots.size():
+	for i in _current_slots.size():
 		var card := _create_card_slot(i)
 		add_child(card)
 		_slot_uis.append(card)
 	_refresh_title()
 
 
-func _update_slot_ui(index: int) -> void:
-	if index < 0 or index >= _slot_uis.size():
-		return
-	var ui := _slot_uis[index]
-	if not is_instance_valid(ui):
-		return
-	var slot := _slots[index]
-	var cd: float = slot["cd"]
-	if cd <= 0.0:
-		ui.monster_id = slot["monster_id"]
-		ui.update_cd(0.0)
-		_refresh_card_content(ui, index)
-	else:
-		ui.update_cd(cd)
-
-
-func _refresh_card_content(ui: MonsterCardUI, index: int) -> void:
-	var old_children: Array[Node] = []
-	for child in ui.get_children():
-		if child != ui._disabled_overlay and child != ui._cd_label:
-			old_children.append(child)
-	for child in old_children:
-		ui.remove_child(child)
-		child.queue_free()
-
-	var slot := _slots[index]
-	var monster_id: StringName = slot["monster_id"]
-	var is_elite: bool = slot["is_elite"]
-	var data := DataRegistry.get_monster(monster_id)
-
-	var style := StyleBoxFlat.new()
-	style.bg_color = data.wireframe_color.darkened(0.6) if data else Color(0.12, 0.14, 0.2)
-	if is_elite:
-		style.border_color = Color(1.0, 0.85, 0.2)
-		style.set_border_width_all(3)
-	else:
-		style.border_color = data.wireframe_color.darkened(0.2) if data else Color(0.3, 0.35, 0.5)
-		style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(6)
-	ui.add_theme_stylebox_override("panel", style)
-
-	ui.monster_id = monster_id
-
-	var vbox := _build_card_vbox(monster_id, is_elite)
-	ui.add_child(vbox)
-	ui.move_child(vbox, 0)
-	ui.setup_overlay()
-
-
 func _create_card_slot(index: int) -> MonsterCardUI:
-	var slot := _slots[index]
+	var slot := _current_slots[index]
 	var monster_id: StringName = slot["monster_id"]
 	var is_elite: bool = slot["is_elite"]
-	var cd: float = slot["cd"]
 	var data := DataRegistry.get_monster(monster_id)
 
 	var panel: MonsterCardUI = CARD_UI_SCRIPT.new()
 	panel.monster_id = monster_id
-	panel.draggable = cd <= 0.0
+	panel.draggable = _global_cd <= 0.0
 	panel.custom_minimum_size = Vector2(130, 120)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 
@@ -226,8 +196,8 @@ func _create_card_slot(index: int) -> MonsterCardUI:
 	var vbox := _build_card_vbox(monster_id, is_elite)
 	panel.add_child(vbox)
 	panel.setup_overlay()
-	if cd > 0.0:
-		panel.update_cd(cd)
+	if _global_cd > 0.0:
+		panel.update_cd(_global_cd)
 	return panel
 
 
@@ -278,7 +248,31 @@ func _build_card_vbox(monster_id: StringName, is_elite: bool) -> VBoxContainer:
 	res_label.add_theme_font_size_override("font_size", 10)
 	vbox.add_child(res_label)
 
+	var next_passive := _next_passive_text(monster_id)
+	if not next_passive.is_empty():
+		var passive_label := Label.new()
+		passive_label.text = next_passive
+		passive_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		passive_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		passive_label.add_theme_color_override("font_color", Color(0.85, 0.75, 1.0, 0.8))
+		passive_label.add_theme_font_size_override("font_size", 9)
+		vbox.add_child(passive_label)
+
 	return vbox
+
+
+func _next_passive_text(monster_id: StringName) -> String:
+	if _evolution_tracker == null:
+		return ""
+	var progress = _evolution_tracker.get_progress_for_monster(monster_id)
+	if progress == null:
+		return ""
+	if progress["tier"] >= 3 or progress["next_threshold"] <= 0:
+		return ""
+	for p in _evolution_tracker.get_all_progress():
+		if p["monster_type"] == monster_id and not p["next_name"].is_empty():
+			return "下阶: %s" % p["next_name"]
+	return ""
 
 
 func _resonance_text(monster_id: StringName) -> String:

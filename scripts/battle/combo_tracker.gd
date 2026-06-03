@@ -10,10 +10,10 @@ enum PatternKind {
 }
 
 const DUO_RECIPES := [
-	{"seq": [&"wolf", &"bat"],         "name": "暗夜突袭", "effect": "hero_aspd",    "value": 0.3, "duration": 3.0},
-	{"seq": [&"goblin", &"slime"],     "name": "暴怒之欲", "effect": "hero_attack",  "value": 3.0, "duration": 3.0},
-	{"seq": [&"gargoyle", &"skeleton"],"name": "不朽壁垒", "effect": "hero_defense", "value": 3.0, "duration": 3.0},
-	{"seq": [&"viper", &"slime"],      "name": "毒沼蔓延", "effect": "poison_all",   "value": 1,   "duration": 0.0},
+	{"seq": [&"wolf", &"bat"],         "name": "暗夜突袭", "effect": "hero_aspd",    "value": 0.3, "kill_count": 2},
+	{"seq": [&"goblin", &"slime"],     "name": "暴怒之欲", "effect": "hero_attack",  "value": 3.0, "kill_count": 2},
+	{"seq": [&"gargoyle", &"skeleton"],"name": "不朽壁垒", "effect": "hero_defense", "value": 3.0, "kill_count": 2},
+	{"seq": [&"viper", &"slime"],      "name": "毒沼蔓延", "effect": "poison_all",   "value": 1},
 	{"seq": [&"skeleton", &"viper"],   "name": "亡者瘟疫", "effect": "summon_aura",  "value": 0,   "duration": 4.0},
 ]
 
@@ -63,3 +63,27 @@ func _check_patterns(last_monster: Monster) -> void:
 				pattern_triggered.emit(PatternKind.DUO_COMBO, payload)
 				_deploy_history.clear()
 				return
+
+
+func get_last_deployed_id() -> StringName:
+	if _deploy_history.is_empty():
+		return &""
+	return _deploy_history[-1]["id"]
+
+
+func get_possible_combos(candidate_id: StringName) -> Array[String]:
+	var results: Array[String] = []
+	if candidate_id == &"":
+		return results
+	var last := get_last_deployed_id()
+	if last != &"":
+		for recipe in DUO_RECIPES:
+			if recipe["seq"][0] == last and recipe["seq"][1] == candidate_id:
+				results.append(recipe["name"])
+	if _deploy_history.size() >= 2:
+		if _deploy_history[-1]["id"] == candidate_id and _deploy_history[-2]["id"] == candidate_id:
+			results.append("生态专精")
+	var window_count := _deploy_history.size()
+	if window_count >= 3:
+		results.append("密集部署")
+	return results

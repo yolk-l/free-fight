@@ -22,12 +22,12 @@ static func get_display_name(kind: int) -> String:
 
 static func get_color(kind: int) -> Color:
 	match kind:
-		Kind.GRASSLAND: return Color(0.45, 0.7, 0.3, 0.25)
-		Kind.DESERT: return Color(0.85, 0.75, 0.4, 0.25)
-		Kind.MOUNTAIN: return Color(0.55, 0.5, 0.45, 0.25)
-		Kind.LAKE: return Color(0.3, 0.55, 0.85, 0.25)
-		Kind.FOREST: return Color(0.2, 0.5, 0.25, 0.3)
-		_: return Color(0.5, 0.5, 0.5, 0.2)
+		Kind.GRASSLAND: return Color(0.45, 0.7, 0.3, 0.4)
+		Kind.DESERT: return Color(0.85, 0.75, 0.4, 0.4)
+		Kind.MOUNTAIN: return Color(0.55, 0.5, 0.45, 0.4)
+		Kind.LAKE: return Color(0.3, 0.55, 0.85, 0.4)
+		Kind.FOREST: return Color(0.2, 0.5, 0.25, 0.45)
+		_: return Color(0.5, 0.5, 0.5, 0.3)
 
 
 static func get_all_kinds() -> Array:

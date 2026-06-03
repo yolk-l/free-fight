@@ -18,6 +18,9 @@ func add_buff(def: BuffDef, source_id: StringName = &"") -> void:
 		elif def.duration_type == BuffDef.DurationType.TIMED:
 			existing.remaining_sec = def.duration_sec
 			buffs_changed.emit()
+		elif def.duration_type == BuffDef.DurationType.COUNTED:
+			existing.remaining_count = def.duration_count
+			buffs_changed.emit()
 		return
 	var inst := BuffInstance.create(def, source_id)
 	_buffs.append(inst)

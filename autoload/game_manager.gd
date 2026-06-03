@@ -1,7 +1,7 @@
 extends Node
 
 const MAIN_MENU_SCENE := "res://scenes/main_menu.tscn"
-const BATTLE_SCENE := "res://scenes/battle/battle_scene.tscn"
+const BATTLE_SCENE := "res://scenes/battle/dungeon_battle_scene.tscn"
 const CODEX_SCENE := "res://scenes/codex/codex_scene.tscn"
 
 var codex_unlocked_monsters: Array[StringName] = []

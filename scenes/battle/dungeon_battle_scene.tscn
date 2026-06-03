@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://dungeon_battle"]
+
+[ext_resource type="Script" path="res://scripts/battle/dungeon_battle_controller.gd" id="1_ctrl"]
+
+[node name="DungeonBattleScene" type="Node2D"]
+script = ExtResource("1_ctrl")

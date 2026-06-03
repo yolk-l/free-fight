@@ -14,3 +14,6 @@ Thumbs.db
 # Build / logs
 /android/
 *.log
+
+# External skill packages
+ParanoiaSkills/

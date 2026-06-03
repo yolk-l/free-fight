@@ -133,3 +133,8 @@ func restore_state(counts: Dictionary, evolutions: Dictionary) -> void:
 
 func restore_hybrids(hybrids: Dictionary) -> void:
 	active_hybrids = hybrids.duplicate()
+
+
+func pulse_all(amount: int) -> void:
+	for path in _paths:
+		on_monster_killed(path.monster_type, amount)

@@ -28,7 +28,18 @@
       "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --path D:/learn/free-fight --quit-after 180 res://scenes/battle/battle_scene.tscn)",
       "Bash(\"/c/Program Files/Godot/Godot_v4.6.3-stable_win64_console.exe\" --headless --path D:/learn/free-fight --quit-after 240 res://scenes/battle/battle_scene.tscn)",
       "Bash(python -c \"from PIL import Image; print\\('PIL available'\\)\")",
-      "Bash(python generate_terrain_icons.py)"
+      "Bash(python generate_terrain_icons.py)",
+      "Bash(gh repo *)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh api *)",
+      "Bash(curl -s https://api.github.com/repos/DY-2026/ParanoiaSkills)",
+      "Bash(curl *)",
+      "Bash(git clone *)",
+      "Bash(where godot *)",
+      "Bash(grep -rn '\\\\\\\\$' D:/learn/free-fight/scripts/ D:/learn/free-fight/data/ D:/learn/free-fight/autoload/ --include=\"*.gd\")",
+      "Bash(grep -v '\\\\\\\\\\\\\\\\n')",
+      "Bash(grep -v '\\\\\\\\\\\\\\\\t')",
+      "Bash(grep -v '\\\\\\\\\\\\\\\\')"
     ]
   }
 }

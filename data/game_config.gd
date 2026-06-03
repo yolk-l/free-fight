@@ -12,6 +12,12 @@ const HERO_MOVE_SPEED := 180.0
 const HERO_PROJECTILE_SPEED := 0.0
 
 const COMBO_WINDOW_SEC := 4.0
-const SLOT_COOLDOWN_SEC := 4.0
-const HAND_SIZE := 5
+const DEPLOY_COOLDOWN_SEC := 2.0
+const HAND_SIZE := 3
 const ELITE_CHANCE := 0.1
+
+# v6 grid dungeon
+const GRID_CELL_SIZE := 64
+const GRID_W := 30
+const GRID_H := 20
+const HERO_VISION_RADIUS := 3

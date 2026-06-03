@@ -115,6 +115,9 @@ func _create_terrain_texture() -> void:
 				var t := diff / BLEND_RANGE
 				var col2 := MapTerrainType.get_color(second_kind)
 				col = col.lerp(col2, (1.0 - t) * 0.5)
+			var border_thickness := 6.0
+			if diff < border_thickness and best_kind != second_kind:
+				col = Color(0.9, 0.9, 0.85, 0.5)
 			img.set_pixel(x, y, col)
 	var tex := ImageTexture.create_from_image(img)
 	_terrain_sprite = Sprite2D.new()
@@ -133,24 +136,24 @@ func _create_terrain_labels() -> void:
 		var pos: Vector2 = seed_data["pos"]
 		var label := Label.new()
 		label.text = MapTerrainType.get_display_name(kind)
-		label.add_theme_font_size_override("font_size", 11)
-		label.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
-		label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
-		label.add_theme_constant_override("outline_size", 3)
-		label.position = pos - Vector2(24, 18)
-		label.size = Vector2(48, 16)
+		label.add_theme_font_size_override("font_size", 13)
+		label.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
+		label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+		label.add_theme_constant_override("outline_size", 4)
+		label.position = pos - Vector2(28, 20)
+		label.size = Vector2(56, 20)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		add_child(label)
 		var hint := MapTerrainType.get_effect_hint(kind)
 		if not hint.is_empty():
 			var hint_label := Label.new()
 			hint_label.text = hint
-			hint_label.add_theme_font_size_override("font_size", 8)
-			hint_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.45))
-			hint_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.5))
-			hint_label.add_theme_constant_override("outline_size", 2)
-			hint_label.position = pos - Vector2(55, 4)
-			hint_label.size = Vector2(110, 28)
+			hint_label.add_theme_font_size_override("font_size", 10)
+			hint_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+			hint_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
+			hint_label.add_theme_constant_override("outline_size", 3)
+			hint_label.position = pos - Vector2(65, 4)
+			hint_label.size = Vector2(130, 36)
 			hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 			add_child(hint_label)

@@ -1,11 +1,6 @@
 extends Node
 
-const TOTAL_BATTLES := 4
 const HEAL_BETWEEN_BATTLES := 0.2
-const MIN_BATTLE_TIME := 45.0
-
-const DIFFICULTY_MULTIPLIERS := [1.0, 1.4, 1.9, 2.5]
-const KILL_REQUIREMENTS := [14, 22, 30, 0]
 
 const KILL_STAT_GAIN := {
 	&"slime":    {"max_hp": 2.0},
@@ -16,6 +11,11 @@ const KILL_STAT_GAIN := {
 	&"gargoyle": {"defense": 0.5},
 	&"viper":    {"armor_penetration": 0.25},
 }
+
+const TOTAL_BATTLES := 1
+const MIN_BATTLE_TIME := 0.0
+const DIFFICULTY_MULTIPLIERS := [1.0]
+const KILL_REQUIREMENTS := [0]
 
 var in_run: bool = false
 var current_battle: int = 0
@@ -71,10 +71,6 @@ func start_run() -> void:
 	GameManager.go_to_battle()
 
 
-# Apply a single kill's stat gain. Returns the integer delta that should be
-# added to the hero's base_stats this kill (sub-1 fractional gains accumulate
-# silently until they cross an integer boundary, then the boundary kill yields
-# +1). attack_speed is float and applied verbatim.
 func apply_kill_gain(monster_id: StringName, multiplier: float = 1.0) -> Dictionary:
 	var gains: Dictionary = KILL_STAT_GAIN.get(monster_id, {})
 	var delta := {"attack": 0, "defense": 0, "attack_speed": 0.0, "armor_penetration": 0, "max_hp": 0}
@@ -105,9 +101,6 @@ func apply_kill_gain(monster_id: StringName, multiplier: float = 1.0) -> Diction
 	return delta
 
 
-# Returns the total accumulated stat gains rounded to applied values. Used
-# when restoring run state between battles, so the hero starts each battle
-# with all previously earned gains baked in.
 func get_total_stat_gains() -> Dictionary:
 	return {
 		"attack": int(floor(stat_gain_attack)),
@@ -118,59 +111,43 @@ func get_total_stat_gains() -> Dictionary:
 	}
 
 
-func save_battle_state(hero: Node, evolution_tracker: Node, survival_time: float, kill_count: int) -> void:
-	run_survival_time += survival_time
-	total_kills += kill_count
-	if hero and hero.base_stats:
-		saved_hero_stats = hero.base_stats.duplicate_stats()
-		var effective = hero.get_combat_stats()
-		saved_hero_stats.hp = mini(
-			saved_hero_stats.hp + int(effective.max_hp * HEAL_BETWEEN_BATTLES),
-			effective.max_hp
-		)
-	if hero:
-		saved_dodge_chance = hero.dodge_chance
-		saved_execute_multiplier = hero.execute_multiplier
-		saved_execute_hp_threshold = hero.execute_hp_threshold
-		saved_flat_damage_reduction = hero.flat_damage_reduction
-		saved_armor_penetration = hero.armor_penetration
-		saved_hp_regen = hero.hp_regen_per_sec
-		saved_regen_low_hp_bonus = hero.regen_low_hp_bonus
-		saved_kill_heal = hero.kill_heal
-	if evolution_tracker:
-		saved_kill_counts = evolution_tracker.kill_counts.duplicate()
-		saved_evolutions = evolution_tracker.active_evolutions.duplicate()
-		saved_active_hybrids = evolution_tracker.active_hybrids.duplicate()
+func get_difficulty_for_distance(dist_from_spawn: int) -> float:
+	if dist_from_spawn <= 10:
+		return 1.0
+	elif dist_from_spawn <= 20:
+		return 1.3
+	elif dist_from_spawn <= 30:
+		return 1.6
+	else:
+		return 2.0
+
+const BOSS_DIFFICULTY := 2.5
+
+
+func save_battle_state(_hero: Node, _evolution_tracker: Node, _survival_time: float, _kill_count: int) -> void:
+	pass
 
 
 func next_battle() -> void:
-	current_battle += 1
-	if current_battle >= TOTAL_BATTLES:
-		end_run(true)
-	else:
-		GameManager.go_to_battle()
+	GameManager.go_to_battle()
+
+
+func get_difficulty_multiplier() -> float:
+	return 1.0
+
+
+func is_last_battle() -> bool:
+	return true
+
+
+func is_boss_battle() -> bool:
+	return false
+
+
+func get_kill_requirement() -> int:
+	return 0
 
 
 func end_run(_victory: bool) -> void:
 	in_run = false
 	GameManager.go_to_main_menu()
-
-
-func get_difficulty_multiplier() -> float:
-	if current_battle < DIFFICULTY_MULTIPLIERS.size():
-		return DIFFICULTY_MULTIPLIERS[current_battle]
-	return 2.0
-
-
-func is_last_battle() -> bool:
-	return current_battle >= TOTAL_BATTLES - 1
-
-
-func is_boss_battle() -> bool:
-	return current_battle >= TOTAL_BATTLES - 1 and current_boss != null
-
-
-func get_kill_requirement() -> int:
-	if current_battle < KILL_REQUIREMENTS.size():
-		return KILL_REQUIREMENTS[current_battle]
-	return 24

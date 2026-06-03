@@ -26,14 +26,11 @@ func deploy_monster_at(monster_id: StringName, pos: Vector2) -> Monster:
 	_monster_container.add_child(monster)
 	monster.global_position = pos
 	monster.setup_monster(data, _hero)
-	if RunManager.in_run:
-		var mult := RunManager.get_difficulty_multiplier()
-		if mult > 1.0 and monster.base_stats:
-			monster.base_stats.attack = int(monster.base_stats.attack * mult)
-			monster.base_stats.hp = int(monster.base_stats.hp * mult)
-			monster.base_stats.max_hp = int(monster.base_stats.max_hp * mult)
-			monster._refresh_ui()
 	if _battle_controller:
 		_battle_controller.register_monster(monster)
+	monster.scale = Vector2(0.4, 0.4)
+	var tween := monster.create_tween()
+	tween.tween_property(monster, "scale", Vector2(1.1, 1.1), 0.12).set_ease(Tween.EASE_OUT)
+	tween.tween_property(monster, "scale", Vector2(1.0, 1.0), 0.08).set_ease(Tween.EASE_IN)
 	monster_deployed.emit(monster)
 	return monster
