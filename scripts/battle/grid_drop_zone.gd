@@ -61,6 +61,22 @@ func _gui_input(event: InputEvent) -> void:
 			var world_pos := _screen_to_world(mb.position)
 			var cell := _grid.world_to_cell(world_pos)
 			tile_clicked.emit(cell, mb.position)
+		elif mb.button_index == MOUSE_BUTTON_RIGHT:
+			if _camera:
+				_camera.handle_drag_button(mb.pressed, mb.global_position)
+		elif mb.button_index == MOUSE_BUTTON_MIDDLE:
+			if _camera:
+				_camera.handle_drag_button(mb.pressed, mb.global_position)
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+			if _camera:
+				_camera.handle_zoom(1)
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			if _camera:
+				_camera.handle_zoom(-1)
+	elif event is InputEventMouseMotion:
+		if _camera and _camera.is_dragging():
+			var motion := event as InputEventMouseMotion
+			_camera.handle_drag_motion(motion.global_position)
 
 
 func _notification(what: int) -> void:

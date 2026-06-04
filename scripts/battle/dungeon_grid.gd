@@ -90,10 +90,38 @@ func reveal_around(cx: int, cy: int, radius: int) -> Array[Vector2i]:
 			var ny: int = cy + dy
 			if nx < 0 or nx >= GRID_W or ny < 0 or ny >= GRID_H:
 				continue
+			if not _has_line_of_sight(cx, cy, nx, ny):
+				continue
 			if not revealed[ny][nx]:
 				revealed[ny][nx] = true
 				newly.append(Vector2i(nx, ny))
 	return newly
+
+
+func _has_line_of_sight(x0: int, y0: int, x1: int, y1: int) -> bool:
+	if x0 == x1 and y0 == y1:
+		return true
+	var dx: int = absi(x1 - x0)
+	var dy: int = absi(y1 - y0)
+	var sx: int = 1 if x0 < x1 else -1
+	var sy: int = 1 if y0 < y1 else -1
+	var err: int = dx - dy
+	var x: int = x0
+	var y: int = y0
+	while true:
+		if x == x1 and y == y1:
+			return true
+		# Intermediate cells must not be walls (skip the origin)
+		if (x != x0 or y != y0) and tiles[y][x] == DungeonTileType.Kind.WALL:
+			return false
+		var e2: int = 2 * err
+		if e2 > -dy:
+			err -= dy
+			x += sx
+		if e2 < dx:
+			err += dx
+			y += sy
+	return true
 
 
 func is_used(x: int, y: int) -> bool:

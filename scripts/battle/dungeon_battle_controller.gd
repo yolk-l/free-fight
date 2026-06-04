@@ -57,6 +57,9 @@ var _tile_info_desc: Label = null
 var _tile_info_status: Label = null
 var _tile_info_cell := Vector2i(-1, -1)
 
+var _event_log_container: VBoxContainer = null
+const MAX_EVENT_LOG_ENTRIES := 12
+
 
 func _ready() -> void:
 	_generate_dungeon()
@@ -312,6 +315,36 @@ func _setup_ui() -> void:
 	ti_vbox.add_child(_tile_info_status)
 	ui.add_child(_tile_info_panel)
 
+	var event_log_panel := PanelContainer.new()
+	event_log_panel.name = "EventLogPanel"
+	event_log_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	event_log_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	event_log_panel.position = Vector2(8, 80)
+	event_log_panel.custom_minimum_size = Vector2(200, 0)
+	var el_style := StyleBoxFlat.new()
+	el_style.bg_color = Color(0.05, 0.05, 0.08, 0.75)
+	el_style.border_color = Color(0.3, 0.35, 0.45, 0.4)
+	el_style.set_border_width_all(1)
+	el_style.set_corner_radius_all(4)
+	el_style.set_content_margin_all(6)
+	event_log_panel.add_theme_stylebox_override("panel", el_style)
+	var el_vbox := VBoxContainer.new()
+	el_vbox.add_theme_constant_override("separation", 2)
+	el_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	event_log_panel.add_child(el_vbox)
+	var el_title := Label.new()
+	el_title.text = "事件记录"
+	el_title.add_theme_font_size_override("font_size", 12)
+	el_title.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75))
+	el_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	el_vbox.add_child(el_title)
+	_event_log_container = VBoxContainer.new()
+	_event_log_container.name = "EventLogEntries"
+	_event_log_container.add_theme_constant_override("separation", 1)
+	_event_log_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	el_vbox.add_child(_event_log_container)
+	ui.add_child(event_log_panel)
+
 
 func _setup_systems() -> void:
 	_tile_effects = TileEffectSystem.new()
@@ -415,8 +448,10 @@ func _on_hero_arrived_at_cell(cell: Vector2i) -> void:
 	if not result.is_empty():
 		if result.has("revealed"):
 			_renderer.reveal_cells(result["revealed"])
-		if DungeonTileType.is_one_shot(_grid.get_tile(cell.x, cell.y)):
-			_renderer.mark_tile_used(cell)
+		var triggered_kind := _grid.get_tile(cell.x, cell.y)
+		if DungeonTileType.is_one_shot(triggered_kind):
+			_grid.set_tile(cell.x, cell.y, DungeonTileType.Kind.EMPTY)
+			_renderer.clear_tile(cell)
 		if result.has("teleport_to"):
 			var dest: Vector2i = result["teleport_to"]
 			_hero.grid_cell = dest
@@ -437,6 +472,21 @@ func _on_hero_path_finished() -> void:
 func _on_tile_effect(cell: Vector2i, text: String, color: Color) -> void:
 	var world_pos := _grid.cell_to_world(cell)
 	_show_floating_text(world_pos, text, color)
+	_add_event_log(cell, text, color)
+
+
+func _add_event_log(cell: Vector2i, text: String, color: Color) -> void:
+	if _event_log_container == null:
+		return
+	var entry := Label.new()
+	entry.text = "(%d,%d) %s" % [cell.x, cell.y, text]
+	entry.add_theme_font_size_override("font_size", 10)
+	entry.add_theme_color_override("font_color", color.lightened(0.2))
+	entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_event_log_container.add_child(entry)
+	if _event_log_container.get_child_count() > MAX_EVENT_LOG_ENTRIES:
+		var oldest := _event_log_container.get_child(0)
+		oldest.queue_free()
 
 
 func _on_card_dropped(monster_id: StringName, grid_cell: Vector2i) -> void:

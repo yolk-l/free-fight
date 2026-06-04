@@ -59,7 +59,7 @@ static func get_display_name(kind: int) -> String:
 
 static func get_color(kind: int) -> Color:
 	match kind:
-		Kind.WALL: return Color(0.15, 0.15, 0.18)
+		Kind.WALL: return Color(0.3, 0.25, 0.22)
 		Kind.EMPTY: return Color(0.28, 0.3, 0.32)
 		Kind.HEAL_SPRING: return Color(0.4, 0.7, 0.9)
 		Kind.POWER_ALTAR: return Color(0.9, 0.35, 0.3)
@@ -106,10 +106,10 @@ static func get_description(kind: int) -> String:
 		Kind.IRON_ALTAR: return "经过时防御+2（持续3场击杀）"
 		Kind.RESONANCE_CRYSTAL: return "下次击杀共鸣进度×2"
 		Kind.TREASURE_CHEST: return "随机永久属性+1（攻/防/攻速/HP）"
-		Kind.POISON_SWAMP: return "经过时受到 8 点伤害"
-		Kind.TRAP: return "经过时受到 12 点伤害"
-		Kind.CURSED_GROUND: return "经过时攻击-2（持续3场击杀）"
-		Kind.SLOW_MUD: return "经过时移速减半（持续2场击杀）"
+		Kind.POISON_SWAMP: return "受到8点伤害，但获得毒涂层（下2次攻击各附2层毒）"
+		Kind.TRAP: return "受到12点伤害，但获得攻速+0.5（持续3次击杀）"
+		Kind.CURSED_GROUND: return "攻击-2（持续3次击杀），但下次击杀共鸣进度×2"
+		Kind.SLOW_MUD: return "移速减半（持续2次击杀），但防御+3（持续3次击杀）"
 		Kind.MYSTERY: return "随机触发一个事件（可能有益或有害）"
 		Kind.VISION_TOWER: return "揭开周围 6 格范围的迷雾"
 		Kind.TELEPORTER: return "传送到地图上配对的传送阵"

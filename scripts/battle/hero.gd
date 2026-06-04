@@ -62,9 +62,6 @@ var venom_explode_spreads: bool = false
 var emergency_summon_enabled: bool = false
 var emergency_summon_used: bool = false
 
-# Terrain summon (Tier II / III evolution). Maps monster_id → {kind: int, chance: float, duration: float}
-var summon_terrain_on_kill: Dictionary = {}
-
 var move_speed: float = GameConfig.HERO_MOVE_SPEED
 var _locked_target: CombatUnit = null
 
@@ -405,8 +402,12 @@ func try_attack(delta: float) -> void:
 		if _venom_bonus_pending > 0:
 			target.add_poison_stack(_venom_bonus_pending)
 			_venom_bonus_pending = 0
+		if buff_container and buff_container.has_buff(&"venom_coating"):
+			target.add_poison_stack(2)
 		if venom_explode_at_5:
 			_check_venom_explode(target)
+	if buff_container:
+		buff_container.notify_event(&"attack")
 	if did_crit and crit_resets_cd:
 		_attack_timer = 0.0
 	if did_execute and execute_kill_grants_crit and target is Monster:

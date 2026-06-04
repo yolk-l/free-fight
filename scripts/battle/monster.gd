@@ -21,19 +21,14 @@ var split_count: int = 2
 var explosion_radius: float = 80.0
 var explosion_damage: int = 8
 var pack_range: float = 200.0
-var pack_aspd_mult: float = 1.5
-var resurrection_hp: int = 10
-var skip_tombstone: bool = false
 var aura_radius: float = 150.0
-var aura_def_bonus: int = 2
-var poison_puddle_duration_mult: float = 1.0
+
+const PACK_ASPD_MULT := 1.5
+const RESURRECTION_HP := 10
+const AURA_DEF_BONUS := 2
 
 var _hero: Hero = null
 var _battle_controller: Node = null
-
-var _shadow_speed_mult: float = 1.0
-var _shadow_attack_bonus: float = 0.0
-var _in_shadow_terrain: bool = false
 
 var poison_stacks: int = 0
 var poison_tick: float = 0.0
@@ -94,10 +89,8 @@ func get_combat_stats() -> CombatStats:
 		stats = data.base_stats.duplicate_stats()
 	else:
 		stats = CombatStats.new()
-	if _shadow_attack_bonus > 0.0:
-		stats.attack = int(stats.attack * (1.0 + _shadow_attack_bonus))
 	if pack_buff and _battle_controller != null and _has_pack_nearby():
-		stats.attack_speed *= pack_aspd_mult
+		stats.attack_speed *= PACK_ASPD_MULT
 	if _battle_controller != null:
 		stats.defense += _get_gargoyle_aura_bonus()
 	return stats
@@ -117,7 +110,7 @@ func _get_gargoyle_aura_bonus() -> int:
 		if not m._stationary_buff_active:
 			continue
 		if global_position.distance_to(m.global_position) <= m.aura_radius:
-			return m.aura_def_bonus
+			return AURA_DEF_BONUS
 	return 0
 
 
@@ -136,19 +129,7 @@ func _has_pack_nearby() -> bool:
 func get_effective_move_speed() -> float:
 	if _stationary_buff_active or _tombstone_active:
 		return 0.0
-	return move_speed * _shadow_speed_mult
-
-
-func apply_shadow_aura(speed_mult: float, atk_bonus: float) -> void:
-	_shadow_speed_mult = speed_mult
-	_shadow_attack_bonus = atk_bonus
-	_in_shadow_terrain = true
-
-
-func clear_shadow_aura() -> void:
-	_shadow_speed_mult = 1.0
-	_shadow_attack_bonus = 0.0
-	_in_shadow_terrain = false
+	return move_speed
 
 
 func acquire_target() -> CombatUnit:
@@ -171,16 +152,9 @@ func _die() -> void:
 	if _is_dead:
 		return
 	if has_resurrection and not _tombstone_active:
-		if skip_tombstone:
-			base_stats.max_hp = resurrection_hp
-			base_stats.hp = resurrection_hp
-			has_resurrection = false
-			stats_changed.emit()
-			_refresh_ui()
-			return
 		_tombstone_active = true
-		base_stats.max_hp = resurrection_hp
-		base_stats.hp = resurrection_hp
+		base_stats.max_hp = RESURRECTION_HP
+		base_stats.hp = RESURRECTION_HP
 		if _body:
 			_body.modulate = Color(0.5, 0.5, 0.55)
 			_body.scale = _body.scale * 0.7

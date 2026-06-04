@@ -14,6 +14,12 @@ const CURSE_DEBUFF_AMOUNT := 2
 const CURSE_DEBUFF_KILLS := 3
 const SLOW_KILLS := 2
 const SLOW_MULT := 0.5
+const TRAP_ASPD_BUFF := 0.5
+const TRAP_ASPD_KILLS := 3
+const SLOW_DEF_BUFF := 3
+const SLOW_DEF_KILLS := 3
+const VENOM_COAT_STACKS := 2
+const VENOM_COAT_ATTACKS := 2
 const VISION_TOWER_RADIUS := 6
 
 const MYSTERY_EVENTS := [
@@ -66,22 +72,26 @@ func apply_tile_effect(cell: Vector2i) -> Dictionary:
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.POISON_SWAMP:
 			_hero.take_damage(POISON_DAMAGE)
-			result = {"text": "毒沼 -%d" % POISON_DAMAGE, "color": Color(0.3, 0.65, 0.25)}
+			_apply_temp_buff(&"venom_coating", "毒涂层", VENOM_COAT_ATTACKS, {}, &"attack")
+			result = {"text": "毒沼 -%d HP / 毒涂层×%d" % [POISON_DAMAGE, VENOM_COAT_ATTACKS], "color": Color(0.3, 0.65, 0.25)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.TRAP:
 			_hero.take_damage(TRAP_DAMAGE)
-			result = {"text": "陷阱 -%d" % TRAP_DAMAGE, "color": Color(0.85, 0.2, 0.2)}
+			_apply_temp_buff(&"trap_aspd", "陷阱激励", TRAP_ASPD_KILLS, {"attack_speed": float(TRAP_ASPD_BUFF)})
+			result = {"text": "陷阱 -%d HP / 攻速+%.1f" % [TRAP_DAMAGE, TRAP_ASPD_BUFF], "color": Color(0.85, 0.2, 0.2)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.CURSED_GROUND:
 			_apply_temp_buff(&"curse", "诅咒", CURSE_DEBUFF_KILLS, {"attack": float(-CURSE_DEBUFF_AMOUNT)})
-			result = {"text": "诅咒! 攻击-%d" % CURSE_DEBUFF_AMOUNT, "color": Color(0.5, 0.2, 0.6)}
+			_resonance_crystal_active = true
+			result = {"text": "诅咒! 攻-%d / 共鸣×2" % CURSE_DEBUFF_AMOUNT, "color": Color(0.5, 0.2, 0.6)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.SLOW_MUD:
 			_apply_temp_buff(&"slow_mud", "减速", SLOW_KILLS, {"move_speed_mult": SLOW_MULT})
-			result = {"text": "减速!", "color": Color(0.55, 0.4, 0.28)}
+			_apply_temp_buff(&"slow_def", "泥盾", SLOW_DEF_KILLS, {"defense": float(SLOW_DEF_BUFF)})
+			result = {"text": "减速! / 防御+%d" % SLOW_DEF_BUFF, "color": Color(0.55, 0.4, 0.28)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.MYSTERY:
-			result = _apply_mystery_event()
+			result = _apply_mystery_event(cell)
 		DungeonTileType.Kind.VISION_TOWER:
 			var revealed := _grid.reveal_around(cell.x, cell.y, VISION_TOWER_RADIUS)
 			result = {"text": "视野扩展!", "color": Color(0.9, 0.9, 0.85), "revealed": revealed}
@@ -124,15 +134,15 @@ func _apply_heal(amount: int) -> void:
 	_hero.refresh_display()
 
 
-func _apply_temp_buff(buff_id: StringName, name_text: String, kill_count: int, mods: Dictionary) -> void:
+func _apply_temp_buff(buff_id: StringName, name_text: String, count: int, mods: Dictionary, trigger: StringName = &"kill") -> void:
 	if _hero == null or _hero.buff_container == null:
 		return
 	var buff := BuffDef.new()
 	buff.id = buff_id
 	buff.display_name = name_text
 	buff.duration_type = BuffDef.DurationType.COUNTED
-	buff.duration_count = kill_count
-	buff.trigger_event = &"kill"
+	buff.duration_count = count
+	buff.trigger_event = trigger
 	buff.modifiers = mods
 	_hero.buff_container.add_buff(buff, &"tile")
 
@@ -161,7 +171,7 @@ func _apply_treasure() -> String:
 			return "HP+10!"
 
 
-func _apply_mystery_event() -> Dictionary:
+func _apply_mystery_event(cell: Vector2i) -> Dictionary:
 	var total_weight := 0.0
 	for event in MYSTERY_EVENTS:
 		total_weight += event["weight"]
@@ -207,5 +217,5 @@ func _apply_mystery_event() -> Dictionary:
 				_evolution_tracker.pulse_all(int(chosen["value"]))
 			text += " 共鸣+%d" % int(chosen["value"])
 			color = Color(0.7, 0.4, 0.9)
-	effect_applied.emit(Vector2i.ZERO, text, color)
+	effect_applied.emit(cell, text, color)
 	return {"text": text, "color": color}

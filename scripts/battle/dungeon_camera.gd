@@ -35,26 +35,29 @@ func _process(delta: float) -> void:
 		_clamp_position()
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_MIDDLE:
-			if mb.pressed:
-				_dragging = true
-				_drag_start = mb.global_position
-				_cam_start = global_position
-			else:
-				_dragging = false
-		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP:
-			var z := clampf(zoom.x + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
-			zoom = Vector2(z, z)
-		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			var z := clampf(zoom.x - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
-			zoom = Vector2(z, z)
-	elif event is InputEventMouseMotion and _dragging:
-		var motion := event as InputEventMouseMotion
-		global_position = _cam_start + (_drag_start - motion.global_position) / zoom.x
-		_clamp_position()
+func is_dragging() -> bool:
+	return _dragging
+
+
+func handle_drag_button(pressed: bool, screen_pos: Vector2) -> void:
+	if pressed:
+		_dragging = true
+		_drag_start = screen_pos
+		_cam_start = global_position
+	else:
+		_dragging = false
+
+
+func handle_drag_motion(screen_pos: Vector2) -> void:
+	if not _dragging:
+		return
+	global_position = _cam_start + (_drag_start - screen_pos) / zoom.x
+	_clamp_position()
+
+
+func handle_zoom(direction: int) -> void:
+	var z := clampf(zoom.x + ZOOM_STEP * direction, ZOOM_MIN, ZOOM_MAX)
+	zoom = Vector2(z, z)
 
 
 func _clamp_position() -> void:

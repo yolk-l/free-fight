@@ -3,6 +3,7 @@ extends Node2D
 
 var _grid: DungeonGrid
 var _tile_labels: Dictionary = {}  # Vector2i -> Label
+var _coord_labels: Dictionary = {}  # Vector2i -> Label
 var _fog_rects: Dictionary = {}  # Vector2i -> ColorRect
 
 
@@ -19,6 +20,19 @@ func _draw_tiles() -> void:
 			var kind := _grid.get_tile(x, y)
 			if kind == DungeonTileType.Kind.WALL:
 				continue
+			# Coordinate label (top-left corner of cell)
+			var coord_lbl := Label.new()
+			coord_lbl.text = "%d,%d" % [x, y]
+			coord_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			coord_lbl.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+			coord_lbl.position = Vector2(x * DungeonGrid.CELL_SIZE + 1, y * DungeonGrid.CELL_SIZE)
+			coord_lbl.size = Vector2(DungeonGrid.CELL_SIZE, 12)
+			coord_lbl.add_theme_font_size_override("font_size", 8)
+			coord_lbl.add_theme_color_override("font_color", Color(0.5, 0.52, 0.55, 0.5))
+			coord_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			add_child(coord_lbl)
+			_coord_labels[Vector2i(x, y)] = coord_lbl
+			# Tile icon label
 			var icon := DungeonTileType.get_icon_char(kind)
 			if icon.is_empty():
 				continue
@@ -67,6 +81,14 @@ func mark_tile_used(cell: Vector2i) -> void:
 		label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.45, 0.4))
 
 
+func clear_tile(cell: Vector2i) -> void:
+	var label: Label = _tile_labels.get(cell)
+	if label and is_instance_valid(label):
+		label.queue_free()
+		_tile_labels.erase(cell)
+	queue_redraw()
+
+
 func update_tile_visual(cell: Vector2i, new_kind: int) -> void:
 	var label: Label = _tile_labels.get(cell)
 	if label and is_instance_valid(label):
@@ -87,3 +109,16 @@ func _draw() -> void:
 			draw_rect(rect, col)
 			if kind != DungeonTileType.Kind.WALL:
 				draw_rect(rect, Color(0.2, 0.22, 0.25), false, 1.0)
+			else:
+				if _is_wall_edge(x, y):
+					draw_rect(rect, Color(0.42, 0.35, 0.3))
+					draw_rect(rect, Color(0.18, 0.15, 0.12), false, 1.5)
+
+
+func _is_wall_edge(x: int, y: int) -> bool:
+	for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var nx: int = x + dir.x
+		var ny: int = y + dir.y
+		if _grid.in_bounds(nx, ny) and _grid.get_tile(nx, ny) != DungeonTileType.Kind.WALL:
+			return true
+	return false
