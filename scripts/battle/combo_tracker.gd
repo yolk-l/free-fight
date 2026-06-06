@@ -15,6 +15,9 @@ const DUO_RECIPES := [
 	{"seq": [&"gargoyle", &"skeleton"],"name": "不朽壁垒", "effect": "hero_defense", "value": 3.0, "kill_count": 2},
 	{"seq": [&"viper", &"slime"],      "name": "毒沼蔓延", "effect": "poison_all",   "value": 1},
 	{"seq": [&"skeleton", &"viper"],   "name": "亡者瘟疫", "effect": "summon_aura",  "value": 0,   "duration": 4.0},
+	{"seq": [&"mantis", &"firefly"],   "name": "闪光刺杀", "effect": "hero_attack",  "value": 4.0, "kill_count": 2},
+	{"seq": [&"treant", &"gargoyle"],  "name": "磐石森林", "effect": "hero_defense", "value": 4.0, "kill_count": 2},
+	{"seq": [&"firefly", &"bat"],      "name": "夜空之舞", "effect": "hero_aspd",    "value": 0.5, "kill_count": 2},
 ]
 
 var _deploy_history: Array[Dictionary] = []

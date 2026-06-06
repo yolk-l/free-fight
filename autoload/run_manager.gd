@@ -8,6 +8,9 @@ const KILL_STAT_GAIN := {
 	&"skeleton": {"defense": 0.25},
 	&"gargoyle": {"defense": 0.5},
 	&"viper":    {"armor_penetration": 0.25},
+	&"mantis":   {"attack": 0.5, "armor_penetration": 0.3},
+	&"treant":   {"max_hp": 3.0},
+	&"firefly":  {"attack_speed": 0.05},
 }
 
 const BOSS_DIFFICULTY := 2.5
@@ -66,12 +69,12 @@ func apply_kill_gain(monster_id: StringName, multiplier: float = 1.0) -> Diction
 	return delta
 
 
-func get_difficulty_for_distance(dist_from_spawn: int) -> float:
-	if dist_from_spawn <= 10:
+func get_difficulty_for_depth(room_depth: int) -> float:
+	if room_depth <= 1:
 		return 1.0
-	elif dist_from_spawn <= 20:
+	elif room_depth <= 3:
 		return 1.3
-	elif dist_from_spawn <= 30:
+	elif room_depth <= 5:
 		return 1.6
 	else:
 		return 2.0

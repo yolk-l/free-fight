@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/monster_data.gd" id="1_monster"]
+[ext_resource type="Script" path="res://data/combat_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="CombatStats_mantis"]
+script = ExtResource("2_stats")
+attack = 8
+max_hp = 8
+hp = 8
+defense = 0
+attack_speed = 2.0
+
+[resource]
+script = ExtResource("1_monster")
+id = &"mantis"
+display_name = "螳螂"
+base_stats = SubResource("CombatStats_mantis")
+wireframe_color = Color(0.5, 0.95, 0.3, 1)
+move_speed = 100.0

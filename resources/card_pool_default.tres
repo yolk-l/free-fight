@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="CardPool" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="CardPool" load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://data/card_pool.gd" id="1_card_pool"]
 [ext_resource type="Script" path="res://data/card_pool_entry.gd" id="2_entry"]
@@ -38,6 +38,21 @@ script = ExtResource("2_entry")
 monster_id = &"viper"
 weight = 2.0
 
+[sub_resource type="Resource" id="entry_mantis"]
+script = ExtResource("2_entry")
+monster_id = &"mantis"
+weight = 2.0
+
+[sub_resource type="Resource" id="entry_treant"]
+script = ExtResource("2_entry")
+monster_id = &"treant"
+weight = 1.5
+
+[sub_resource type="Resource" id="entry_firefly"]
+script = ExtResource("2_entry")
+monster_id = &"firefly"
+weight = 2.5
+
 [resource]
 script = ExtResource("1_card_pool")
-entries = [SubResource("entry_slime"), SubResource("entry_bat"), SubResource("entry_wolf"), SubResource("entry_goblin"), SubResource("entry_gargoyle"), SubResource("entry_skeleton"), SubResource("entry_viper")]
+entries = [SubResource("entry_slime"), SubResource("entry_bat"), SubResource("entry_wolf"), SubResource("entry_goblin"), SubResource("entry_gargoyle"), SubResource("entry_skeleton"), SubResource("entry_viper"), SubResource("entry_mantis"), SubResource("entry_treant"), SubResource("entry_firefly")]

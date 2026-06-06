@@ -20,7 +20,23 @@ const SLOW_DEF_BUFF := 3
 const SLOW_DEF_KILLS := 3
 const VENOM_COAT_STACKS := 2
 const VENOM_COAT_ATTACKS := 2
-const VISION_TOWER_RADIUS := 6
+
+const CHAIN_MULT_PER_KILL := 0.3
+
+const AFFINITY_MATCH_MULT := 1.5
+
+const MONSTER_AFFINITY := {
+	&"wolf": DungeonTileType.Affinity.FURY,
+	&"goblin": DungeonTileType.Affinity.FURY,
+	&"mantis": DungeonTileType.Affinity.FURY,
+	&"skeleton": DungeonTileType.Affinity.GUARD,
+	&"gargoyle": DungeonTileType.Affinity.GUARD,
+	&"bat": DungeonTileType.Affinity.SWIFT,
+	&"viper": DungeonTileType.Affinity.SWIFT,
+	&"firefly": DungeonTileType.Affinity.SWIFT,
+	&"slime": DungeonTileType.Affinity.VITAL,
+	&"treant": DungeonTileType.Affinity.VITAL,
+}
 
 const MYSTERY_EVENTS := [
 	{"name": "祝福", "weight": 3, "type": "heal", "value": 15},
@@ -36,6 +52,7 @@ var _grid: DungeonGrid
 var _hero: Hero
 var _evolution_tracker = null
 var _resonance_crystal_active: bool = false
+var _room_chain: int = 0
 
 
 func setup(grid: DungeonGrid, hero: Hero, evo_tracker = null) -> void:
@@ -44,69 +61,97 @@ func setup(grid: DungeonGrid, hero: Hero, evo_tracker = null) -> void:
 	_evolution_tracker = evo_tracker
 
 
-func apply_tile_effect(cell: Vector2i) -> Dictionary:
+func reset_chain() -> void:
+	_room_chain = 0
+
+
+func get_chain_count() -> int:
+	return _room_chain
+
+
+func get_chain_multiplier() -> float:
+	return 1.0 + _room_chain * CHAIN_MULT_PER_KILL
+
+
+static func get_monster_affinity(monster_id: StringName) -> int:
+	return MONSTER_AFFINITY.get(monster_id, -1)
+
+
+static func is_affinity_match(monster_id: StringName, tile_kind: int) -> bool:
+	var m_aff: int = MONSTER_AFFINITY.get(monster_id, -1)
+	var t_aff: int = DungeonTileType.get_affinity(tile_kind)
+	return m_aff >= 0 and m_aff == t_aff
+
+
+func get_total_multiplier(monster_id: StringName, tile_kind: int) -> float:
+	var chain_mult := get_chain_multiplier()
+	var affinity_mult := AFFINITY_MATCH_MULT if is_affinity_match(monster_id, tile_kind) else 1.0
+	return chain_mult * affinity_mult
+
+
+func apply_tile_effect(cell: Vector2i, monster_id: StringName = &"") -> Dictionary:
 	var kind := _grid.get_tile(cell.x, cell.y)
 	if _grid.is_used(cell.x, cell.y) and DungeonTileType.is_one_shot(kind):
 		return {}
+	var mult := get_total_multiplier(monster_id, kind)
+	var matched := is_affinity_match(monster_id, kind)
 	var result := {}
 	match kind:
 		DungeonTileType.Kind.HEAL_SPRING:
-			_apply_heal(HEAL_AMOUNT)
-			result = {"text": "+%d HP" % HEAL_AMOUNT, "color": Color(0.4, 0.9, 0.5)}
+			var amount := int(HEAL_AMOUNT * mult)
+			_apply_heal(amount)
+			result = {"text": "+%d HP%s" % [amount, _mult_tag(mult, matched)], "color": Color(0.4, 0.9, 0.5)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.POWER_ALTAR:
-			_apply_temp_buff(&"power_altar", "力量", POWER_BUFF_KILLS, {"attack": float(POWER_BUFF_AMOUNT)})
-			result = {"text": "攻击+%d!" % POWER_BUFF_AMOUNT, "color": Color(0.9, 0.4, 0.3)}
+			var amount := maxi(2, int(POWER_BUFF_AMOUNT * mult))
+			_apply_temp_buff(&"power_altar", "力量", POWER_BUFF_KILLS, {"attack": float(amount)})
+			result = {"text": "攻击+%d!%s" % [amount, _mult_tag(mult, matched)], "color": Color(0.9, 0.4, 0.3)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.IRON_ALTAR:
-			_apply_temp_buff(&"iron_altar", "铁壁", IRON_BUFF_KILLS, {"defense": float(IRON_BUFF_AMOUNT)})
-			result = {"text": "防御+%d!" % IRON_BUFF_AMOUNT, "color": Color(0.7, 0.72, 0.78)}
+			var amount := maxi(2, int(IRON_BUFF_AMOUNT * mult))
+			_apply_temp_buff(&"iron_altar", "铁壁", IRON_BUFF_KILLS, {"defense": float(amount)})
+			result = {"text": "防御+%d!%s" % [amount, _mult_tag(mult, matched)], "color": Color(0.7, 0.72, 0.78)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.RESONANCE_CRYSTAL:
 			_resonance_crystal_active = true
-			result = {"text": "共鸣×2!", "color": Color(0.7, 0.4, 0.9)}
+			result = {"text": "共鸣×2!%s" % _mult_tag(mult, matched), "color": Color(0.7, 0.4, 0.9)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.TREASURE_CHEST:
-			var gain := _apply_treasure()
-			result = {"text": gain, "color": Color(0.95, 0.8, 0.25)}
+			var gain := _apply_treasure(mult)
+			result = {"text": "%s%s" % [gain, _mult_tag(mult, matched)], "color": Color(0.95, 0.8, 0.25)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.POISON_SWAMP:
-			_hero.take_damage(POISON_DAMAGE)
+			var damage := int(POISON_DAMAGE * mult)
+			_hero.take_damage(damage)
 			_apply_temp_buff(&"venom_coating", "毒涂层", VENOM_COAT_ATTACKS, {}, &"attack")
-			result = {"text": "毒沼 -%d HP / 毒涂层×%d" % [POISON_DAMAGE, VENOM_COAT_ATTACKS], "color": Color(0.3, 0.65, 0.25)}
+			result = {"text": "毒沼 -%d HP / 毒涂层×%d%s" % [damage, VENOM_COAT_ATTACKS, _mult_tag(mult, matched)], "color": Color(0.3, 0.65, 0.25)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.TRAP:
-			_hero.take_damage(TRAP_DAMAGE)
-			_apply_temp_buff(&"trap_aspd", "陷阱激励", TRAP_ASPD_KILLS, {"attack_speed": float(TRAP_ASPD_BUFF)})
-			result = {"text": "陷阱 -%d HP / 攻速+%.1f" % [TRAP_DAMAGE, TRAP_ASPD_BUFF], "color": Color(0.85, 0.2, 0.2)}
+			var damage := int(TRAP_DAMAGE * mult)
+			var aspd := TRAP_ASPD_BUFF * mult
+			_hero.take_damage(damage)
+			_apply_temp_buff(&"trap_aspd", "陷阱激励", TRAP_ASPD_KILLS, {"attack_speed": aspd})
+			result = {"text": "陷阱 -%d HP / 攻速+%.1f%s" % [damage, aspd, _mult_tag(mult, matched)], "color": Color(0.85, 0.2, 0.2)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.CURSED_GROUND:
-			_apply_temp_buff(&"curse", "诅咒", CURSE_DEBUFF_KILLS, {"attack": float(-CURSE_DEBUFF_AMOUNT)})
+			var debuff := maxi(2, int(CURSE_DEBUFF_AMOUNT * mult))
+			_apply_temp_buff(&"curse", "诅咒", CURSE_DEBUFF_KILLS, {"attack": float(-debuff)})
 			_resonance_crystal_active = true
-			result = {"text": "诅咒! 攻-%d / 共鸣×2" % CURSE_DEBUFF_AMOUNT, "color": Color(0.5, 0.2, 0.6)}
+			result = {"text": "诅咒! 攻-%d / 共鸣×2%s" % [debuff, _mult_tag(mult, matched)], "color": Color(0.5, 0.2, 0.6)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.SLOW_MUD:
+			var def_buff := maxi(3, int(SLOW_DEF_BUFF * mult))
 			_apply_temp_buff(&"slow_mud", "减速", SLOW_KILLS, {"move_speed_mult": SLOW_MULT})
-			_apply_temp_buff(&"slow_def", "泥盾", SLOW_DEF_KILLS, {"defense": float(SLOW_DEF_BUFF)})
-			result = {"text": "减速! / 防御+%d" % SLOW_DEF_BUFF, "color": Color(0.55, 0.4, 0.28)}
+			_apply_temp_buff(&"slow_def", "泥盾", SLOW_DEF_KILLS, {"defense": float(def_buff)})
+			result = {"text": "减速! / 防御+%d%s" % [def_buff, _mult_tag(mult, matched)], "color": Color(0.55, 0.4, 0.28)}
 			effect_applied.emit(cell, result["text"], result["color"])
 		DungeonTileType.Kind.MYSTERY:
-			result = _apply_mystery_event(cell)
-		DungeonTileType.Kind.VISION_TOWER:
-			var revealed := _grid.reveal_around(cell.x, cell.y, VISION_TOWER_RADIUS)
-			result = {"text": "视野扩展!", "color": Color(0.9, 0.9, 0.85), "revealed": revealed}
-			effect_applied.emit(cell, result["text"], result["color"])
-		DungeonTileType.Kind.TELEPORTER:
-			var dest := _find_teleporter_dest(cell)
-			if dest != Vector2i(-1, -1):
-				result = {"text": "传送!", "color": Color(0.5, 0.4, 0.9), "teleport_to": dest}
-				effect_applied.emit(cell, result["text"], result["color"])
-		DungeonTileType.Kind.BOSS_GATE:
-			result = {"text": "Boss区域!", "color": Color(0.95, 0.3, 0.2), "boss_gate": true}
-			effect_applied.emit(cell, result["text"], result["color"])
+			result = _apply_mystery_event(cell, mult, matched)
 
 	if DungeonTileType.is_one_shot(kind):
 		_grid.mark_used(cell.x, cell.y)
+	if not result.is_empty():
+		_room_chain += 1
 	return result
 
 
@@ -117,13 +162,12 @@ func consume_resonance_crystal() -> bool:
 	return false
 
 
-func _find_teleporter_dest(cell: Vector2i) -> Vector2i:
-	for pair in _grid.teleporter_pairs:
-		if pair[0] == cell:
-			return pair[1]
-		elif pair[1] == cell:
-			return pair[0]
-	return Vector2i(-1, -1)
+func _mult_tag(mult: float, matched: bool) -> String:
+	if mult <= 1.05 and not matched:
+		return ""
+	if matched:
+		return " (×%.1f 亲和!)" % mult
+	return " (×%.1f)" % mult
 
 
 func _apply_heal(amount: int) -> void:
@@ -147,31 +191,34 @@ func _apply_temp_buff(buff_id: StringName, name_text: String, count: int, mods: 
 	_hero.buff_container.add_buff(buff, &"tile")
 
 
-func _apply_treasure() -> String:
+func _apply_treasure(mult: float) -> String:
 	if _hero == null or _hero.base_stats == null:
 		return "宝箱"
+	var bonus := maxi(1, int(1.0 * mult))
 	var roll := randi() % 4
 	match roll:
 		0:
-			_hero.base_stats.attack += 1
+			_hero.base_stats.attack += bonus
 			_hero.refresh_display()
-			return "攻击+1!"
+			return "攻击+%d!" % bonus
 		1:
-			_hero.base_stats.defense += 1
+			_hero.base_stats.defense += bonus
 			_hero.refresh_display()
-			return "防御+1!"
+			return "防御+%d!" % bonus
 		2:
-			_hero.base_stats.attack_speed += 0.1
+			var aspd_bonus := 0.1 * mult
+			_hero.base_stats.attack_speed += aspd_bonus
 			_hero.refresh_display()
-			return "攻速+0.1!"
+			return "攻速+%.1f!" % aspd_bonus
 		_:
-			_hero.base_stats.max_hp += 10
-			_hero.base_stats.hp += 10
+			var hp_bonus := maxi(10, int(10.0 * mult))
+			_hero.base_stats.max_hp += hp_bonus
+			_hero.base_stats.hp += hp_bonus
 			_hero.refresh_display()
-			return "HP+10!"
+			return "HP+%d!" % hp_bonus
 
 
-func _apply_mystery_event(cell: Vector2i) -> Dictionary:
+func _apply_mystery_event(cell: Vector2i, mult: float, matched: bool) -> Dictionary:
 	var total_weight := 0.0
 	for event in MYSTERY_EVENTS:
 		total_weight += event["weight"]
@@ -186,36 +233,43 @@ func _apply_mystery_event(cell: Vector2i) -> Dictionary:
 	var color := Color(0.85, 0.8, 0.3)
 	match chosen["type"]:
 		"heal":
-			_apply_heal(int(chosen["value"]))
-			text += " +%d HP" % int(chosen["value"])
+			var amount := int(int(chosen["value"]) * mult)
+			_apply_heal(amount)
+			text += " +%d HP" % amount
 			color = Color(0.4, 0.9, 0.5)
 		"perm_attack":
-			_hero.base_stats.attack += int(chosen["value"])
+			var amount := maxi(1, int(int(chosen["value"]) * mult))
+			_hero.base_stats.attack += amount
 			_hero.refresh_display()
-			text += " 攻+%d" % int(chosen["value"])
+			text += " 攻+%d" % amount
 			color = Color(0.9, 0.4, 0.3)
 		"perm_defense":
-			_hero.base_stats.defense += int(chosen["value"])
+			var amount := maxi(1, int(int(chosen["value"]) * mult))
+			_hero.base_stats.defense += amount
 			_hero.refresh_display()
-			text += " 防+%d" % int(chosen["value"])
+			text += " 防+%d" % amount
 			color = Color(0.7, 0.72, 0.78)
 		"perm_aspd":
-			_hero.base_stats.attack_speed += float(chosen["value"])
+			var amount := float(chosen["value"]) * mult
+			_hero.base_stats.attack_speed += amount
 			_hero.refresh_display()
-			text += " 攻速+%.1f" % float(chosen["value"])
+			text += " 攻速+%.1f" % amount
 			color = Color(0.4, 0.8, 0.9)
 		"damage":
-			_hero.take_damage(int(chosen["value"]))
-			text += " -%d HP" % int(chosen["value"])
+			var amount := int(int(chosen["value"]) * mult)
+			_hero.take_damage(amount)
+			text += " -%d HP" % amount
 			color = Color(0.85, 0.2, 0.2)
 		"temp_attack_down":
-			_apply_temp_buff(&"mystery_debuff", "虚弱", 4, {"attack": -float(chosen["value"])})
-			text += " 攻-%d" % int(chosen["value"])
+			var amount := maxi(1, int(float(chosen["value"]) * mult))
+			_apply_temp_buff(&"mystery_debuff", "虚弱", 4, {"attack": -float(amount)})
+			text += " 攻-%d" % amount
 			color = Color(0.5, 0.2, 0.6)
 		"resonance_pulse":
 			if _evolution_tracker and _evolution_tracker.has_method("pulse_all"):
 				_evolution_tracker.pulse_all(int(chosen["value"]))
 			text += " 共鸣+%d" % int(chosen["value"])
 			color = Color(0.7, 0.4, 0.9)
+	text += _mult_tag(mult, matched)
 	effect_applied.emit(cell, text, color)
 	return {"text": text, "color": color}

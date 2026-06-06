@@ -13,6 +13,9 @@ const MECHANIC_SHORT := {
 	&"skeleton": "墓碑复活",
 	&"gargoyle": "防御光环",
 	&"viper":    "毒池",
+	&"mantis":   "死亡反噬",
+	&"treant":   "死亡化泉",
+	&"firefly":  "死亡赋能",
 }
 
 var _current_slots: Array[Dictionary] = []
@@ -239,6 +242,16 @@ func _build_card_vbox(monster_id: StringName, is_elite: bool) -> VBoxContainer:
 	mech_label.add_theme_color_override("font_color", Color(0.6, 0.85, 0.95))
 	mech_label.add_theme_font_size_override("font_size", 10)
 	vbox.add_child(mech_label)
+
+	var aff: int = TileEffectSystem.get_monster_affinity(monster_id)
+	if aff >= 0:
+		var aff_label := Label.new()
+		aff_label.text = "[%s]" % DungeonTileType.AFFINITY_DISPLAY.get(aff, "")
+		aff_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		aff_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		aff_label.add_theme_color_override("font_color", DungeonTileType.AFFINITY_COLOR.get(aff, Color(0.5, 0.5, 0.5)))
+		aff_label.add_theme_font_size_override("font_size", 10)
+		vbox.add_child(aff_label)
 
 	var res_label := Label.new()
 	res_label.text = _resonance_text(monster_id)

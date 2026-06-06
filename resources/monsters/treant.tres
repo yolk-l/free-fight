@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://data/monster_data.gd" id="1_monster"]
+[ext_resource type="Script" path="res://data/combat_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="CombatStats_treant"]
+script = ExtResource("2_stats")
+attack = 3
+max_hp = 30
+hp = 30
+defense = 4
+attack_speed = 0.5
+
+[resource]
+script = ExtResource("1_monster")
+id = &"treant"
+display_name = "树人"
+base_stats = SubResource("CombatStats_treant")
+wireframe_color = Color(0.3, 0.65, 0.2, 1)
+move_speed = 20.0

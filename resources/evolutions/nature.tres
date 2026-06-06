@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EvolutionPath" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/evolution_path.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+path_id = &"nature"
+display_name = "自然"
+monster_type = &"treant"
+tier1_threshold = 5
+tier1_name = "生命涌动"
+tier1_description = "击杀后回复3HP"
+tier2_threshold = 12
+tier2_name = "自然恩赐"
+tier2_description = "击杀回复提升至6HP"
+tier3_threshold = 20
+tier3_name = "生命之树"
+tier3_description = "HP低于30%时自动回复2HP/s"

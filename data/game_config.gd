@@ -16,8 +16,11 @@ const DEPLOY_COOLDOWN_SEC := 2.0
 const HAND_SIZE := 3
 const ELITE_CHANCE := 0.1
 
-# v6 grid dungeon
+# v7 room-based dungeon
 const GRID_CELL_SIZE := 64
-const GRID_W := 30
-const GRID_H := 20
-const HERO_VISION_RADIUS := 3
+const ROOM_W := 10
+const ROOM_H := 8
+const ROOM_COUNT_MIN := 6
+const ROOM_COUNT_MAX := 9
+const EVENTS_PER_ROOM_MIN := 5
+const EVENTS_PER_ROOM_MAX := 8

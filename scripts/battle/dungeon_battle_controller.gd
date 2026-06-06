@@ -10,6 +10,8 @@ var _monsters: Array[Monster] = []
 var _game_over: bool = false
 var _battle_won: bool = false
 
+var _world_map: WorldMap
+var _current_room_index: int = 0
 var _grid: DungeonGrid
 var _pathfinder: GridPathfinder
 var _renderer: DungeonRenderer
@@ -39,6 +41,7 @@ var _loot_system: LootSystem
 var _game_over_panel: PanelContainer
 var _survival_label: Label
 var _top_label: Label
+var _room_status_label: Label
 
 var _survival_time: float = 0.0
 var _deploy_count: int = 0
@@ -49,7 +52,11 @@ var _boss_hp_label: Label = null
 var _boss_aura_tick: float = 0.0
 var _boss_summon_timer: float = 0.0
 var _boss_spawned: bool = false
+
 var _pending_loot_cell := Vector2i(-1, -1)
+var _pending_loot_monster_id: StringName = &""
+var _walking_to_event_cell := Vector2i(-1, -1)
+var _exits_opened: bool = false
 
 var _tile_info_panel: PanelContainer = null
 var _tile_info_title: Label = null
@@ -70,30 +77,106 @@ func _ready() -> void:
 	_setup_systems()
 	_setup_cards()
 	_connect_signals()
-	if RunManager.in_run:
-		_top_label.text = "地下城探索 | 拖拽部署"
-	else:
-		_top_label.text = "地下城探索 | 拖拽部署"
+	_load_room(0)
 
 
 func _generate_dungeon() -> void:
 	var gen := MapGenerator.new()
-	_grid = gen.generate()
+	_world_map = gen.generate()
+
+
+func _load_room(room_index: int) -> void:
+	_current_room_index = room_index
+	_grid = _world_map.get_room(room_index)
+	_exits_opened = false
+	_pending_loot_cell = Vector2i(-1, -1)
+	_walking_to_event_cell = Vector2i(-1, -1)
+
+	# Clear existing monsters
+	for monster in _monsters:
+		if is_instance_valid(monster):
+			monster.queue_free()
+	_monsters.clear()
+
+	# Setup pathfinder for new room
 	_pathfinder = GridPathfinder.new()
 	_pathfinder.setup(_grid)
+
+	# Setup renderer
+	_renderer.setup(_grid)
+	_renderer.mark_exit_types(_world_map)
+
+	# Setup path preview
+	_path_preview.setup(_grid)
+
+	# Place hero at spawn
+	_hero.grid_cell = _grid.spawn_cell
+	_hero.global_position = _grid.cell_to_world(_grid.spawn_cell)
+	_hero._grid_path.clear()
+	_hero._grid_moving = false
+
+	# Update camera limits
+	_camera.setup(_hero, DungeonGrid.GRID_W, DungeonGrid.GRID_H, DungeonGrid.CELL_SIZE)
+
+	# Update drop zone
+	_drop_zone.setup(_grid, _pathfinder, _hero, _camera)
+	_drop_zone.set_path_preview(_path_preview)
+
+	# Update mini map
+	if _mini_map:
+		_mini_map.setup_world(_world_map, _current_room_index)
+
+	# Update tile effects
+	_tile_effects.setup(_grid, _hero, _evolution_tracker)
+	_tile_effects.reset_chain()
+
+	# Remove exits leading to already-cleared rooms
+	var exits_to_remove: Array[Vector2i] = []
+	for exit_cell in _grid.exit_cells.keys():
+		var target: int = _grid.exit_cells[exit_cell]
+		if _world_map.room_cleared[target]:
+			exits_to_remove.append(exit_cell)
+	for cell in exits_to_remove:
+		_grid.exit_cells.erase(cell)
+		_grid.set_tile(cell.x, cell.y, DungeonTileType.Kind.WALL)
+
+	# Room type specific setup
+	var room_type: int = _world_map.room_types[room_index]
+	if room_type == WorldMap.RoomType.BOSS:
+		_spawn_boss_in_room()
+	elif _grid.are_all_events_cleared():
+		_exits_opened = true
+		_grid.open_exits()
+		_pathfinder = GridPathfinder.new()
+		_pathfinder.setup(_grid)
+		_renderer.open_exits()
+
+	# Update room status (after exits logic so label is correct)
+	_refresh_room_status()
+
+	_top_label.text = "房间 %d | %s" % [room_index + 1, _get_room_type_name(room_type)]
+
+
+func _get_room_type_name(room_type: int) -> String:
+	match room_type:
+		WorldMap.RoomType.START: return "起始"
+		WorldMap.RoomType.NORMAL: return "普通"
+		WorldMap.RoomType.TREASURE: return "宝藏"
+		WorldMap.RoomType.DANGER: return "危险"
+		WorldMap.RoomType.ELITE: return "精英"
+		WorldMap.RoomType.BOSS: return "Boss"
+		_: return ""
 
 
 func _setup_world_nodes() -> void:
 	_renderer = DungeonRenderer.new()
 	_renderer.name = "DungeonRenderer"
 	add_child(_renderer)
-	_renderer.setup(_grid)
 
 	_path_preview = PathPreview.new()
 	_path_preview.name = "PathPreview"
 	_path_preview.z_index = 5
 	add_child(_path_preview)
-	_path_preview.setup(_grid)
 
 	_monster_container = Node2D.new()
 	_monster_container.name = "Monsters"
@@ -134,8 +217,6 @@ func _setup_hero() -> void:
 		stats.attack_speed = 1.0
 	_hero.setup_hero(stats, self)
 	_hero.grid_mode = true
-	_hero.grid_cell = _grid.spawn_cell
-	_hero.global_position = _grid.cell_to_world(_grid.spawn_cell)
 	_hero.arrived_at_cell.connect(_on_hero_arrived_at_cell)
 	_hero.path_finished.connect(_on_hero_path_finished)
 	_hero.died.connect(_on_hero_died)
@@ -146,7 +227,6 @@ func _setup_camera() -> void:
 	_camera = DungeonCamera.new()
 	_camera.name = "DungeonCamera"
 	add_child(_camera)
-	_camera.setup(_hero, DungeonGrid.GRID_W, DungeonGrid.GRID_H, DungeonGrid.CELL_SIZE)
 	_camera.make_current()
 
 
@@ -167,28 +247,32 @@ func _setup_ui() -> void:
 	_top_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_top_label.add_theme_color_override("font_color", Color(0.6, 0.7, 0.85))
 	_top_label.add_theme_font_size_override("font_size", 13)
-	_top_label.text = "地下城探索"
+	_top_label.text = "房间探索"
 	top_bar.add_child(_top_label)
 
 	_survival_label = Label.new()
 	_survival_label.add_theme_color_override("font_color", Color(0.85, 0.75, 0.4))
 	_survival_label.add_theme_font_size_override("font_size", 14)
-	_survival_label.text = "探索: 0s"
+	_survival_label.text = "时间: 0s"
 	_survival_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	top_bar.add_child(_survival_label)
+
+	_room_status_label = Label.new()
+	_room_status_label.name = "RoomStatus"
+	_room_status_label.position = Vector2(20, 42)
+	_room_status_label.add_theme_font_size_override("font_size", 13)
+	_room_status_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4))
+	ui.add_child(_room_status_label)
 
 	_mini_map = MiniMap.new()
 	_mini_map.name = "MiniMap"
 	_mini_map.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_mini_map.position = Vector2(1090, 8)
 	ui.add_child(_mini_map)
-	_mini_map.setup(_grid, _hero)
 
 	_drop_zone = GridDropZone.new()
 	_drop_zone.name = "GridDropZone"
 	ui.add_child(_drop_zone)
-	_drop_zone.setup(_grid, _pathfinder, _hero, _camera)
-	_drop_zone.set_path_preview(_path_preview)
 
 	var bottom_bg := ColorRect.new()
 	bottom_bg.color = Color(0.08, 0.08, 0.12, 0.9)
@@ -319,7 +403,7 @@ func _setup_ui() -> void:
 	event_log_panel.name = "EventLogPanel"
 	event_log_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	event_log_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	event_log_panel.position = Vector2(8, 80)
+	event_log_panel.position = Vector2(8, 100)
 	event_log_panel.custom_minimum_size = Vector2(200, 0)
 	var el_style := StyleBoxFlat.new()
 	el_style.bg_color = Color(0.05, 0.05, 0.08, 0.75)
@@ -365,9 +449,6 @@ func _setup_systems() -> void:
 	_evolution_tracker.hybrid_triggered.connect(_on_hybrid_triggered)
 	_setup_evolution_ui()
 
-	_tile_effects.setup(_grid, _hero, _evolution_tracker)
-	_tile_effects.effect_applied.connect(_on_tile_effect)
-
 
 func _setup_cards() -> void:
 	card_hand = _card_hand_node
@@ -381,6 +462,7 @@ func _connect_signals() -> void:
 	_deploy_manager.monster_deployed.connect(_on_monster_deployed)
 	_drop_zone.card_dropped.connect(_on_card_dropped)
 	_drop_zone.tile_clicked.connect(_on_tile_clicked)
+	_tile_effects.effect_applied.connect(_on_tile_effect)
 
 
 func _physics_process(delta: float) -> void:
@@ -388,7 +470,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_survival_time += delta
 	if _survival_label:
-		_survival_label.text = "探索: %ds | 击杀: %d" % [int(_survival_time), _kill_count]
+		_survival_label.text = "时间: %ds | 击杀: %d" % [int(_survival_time), _kill_count]
 	_card_hand_node.tick(delta)
 	if _hero.buff_container:
 		_hero.buff_container.tick(delta)
@@ -399,8 +481,6 @@ func _physics_process(delta: float) -> void:
 			monster.tick_combat(delta)
 	if _boss_monster != null:
 		_tick_boss_effects(delta)
-	if _mini_map:
-		_mini_map.set_monsters(_monsters)
 	_auto_find_target()
 
 
@@ -409,17 +489,23 @@ func _auto_find_target() -> void:
 		return
 	if not _hero.is_grid_idle():
 		return
+	# Move to killed monster's cell for loot
 	if _pending_loot_cell != Vector2i(-1, -1):
 		var loot_cell := _pending_loot_cell
 		_pending_loot_cell = Vector2i(-1, -1)
-		if _hero.grid_cell == loot_cell:
-			_hero.set_grid_path([loot_cell])
+		var target_pos := _grid.cell_to_world(loot_cell)
+		if _hero.global_position.distance_to(target_pos) < 4.0:
+			_trigger_event_at_cell(loot_cell)
 		else:
+			_walking_to_event_cell = loot_cell
 			var path := _pathfinder.find_path(_hero.grid_cell, loot_cell)
 			if path.size() > 1:
 				path.remove_at(0)
 				_hero.set_grid_path(path)
+			else:
+				_hero.move_to_cell(loot_cell, target_pos)
 		return
+	# Find nearest monster
 	var nearest: Monster = null
 	var best_dist := 999999
 	for monster in _monsters:
@@ -440,29 +526,75 @@ func _auto_find_target() -> void:
 		_hero._locked_target = nearest
 
 
+
+
 func _on_hero_arrived_at_cell(cell: Vector2i) -> void:
-	var newly_revealed := _grid.reveal_around(cell.x, cell.y, GameConfig.HERO_VISION_RADIUS)
-	if not newly_revealed.is_empty():
-		_renderer.reveal_cells(newly_revealed)
-	var result := _tile_effects.apply_tile_effect(cell)
+	# Check if hero stepped on an exit
+	if _exits_opened and _grid.exit_cells.has(cell):
+		var target_room: int = _grid.exit_cells[cell]
+		_transition_to_room(target_room)
+		return
+	# Check if this is the event cell we were walking to after a kill
+	if _walking_to_event_cell == cell:
+		_walking_to_event_cell = Vector2i(-1, -1)
+		_trigger_event_at_cell(cell)
+
+
+func _trigger_event_at_cell(cell: Vector2i) -> void:
+	if not _grid.is_event_tile(cell.x, cell.y):
+		return
+	if _grid.is_used(cell.x, cell.y):
+		return
+	var mid := _pending_loot_monster_id
+	_pending_loot_monster_id = &""
+	var result := _tile_effects.apply_tile_effect(cell, mid)
 	if not result.is_empty():
-		if result.has("revealed"):
-			_renderer.reveal_cells(result["revealed"])
-		var triggered_kind := _grid.get_tile(cell.x, cell.y)
-		if DungeonTileType.is_one_shot(triggered_kind):
+		_grid.mark_event_cleared(cell.x, cell.y)
+		_renderer.mark_event_cleared(cell)
+		var kind := _grid.get_tile(cell.x, cell.y)
+		if DungeonTileType.is_one_shot(kind):
 			_grid.set_tile(cell.x, cell.y, DungeonTileType.Kind.EMPTY)
 			_renderer.clear_tile(cell)
-		if result.has("teleport_to"):
-			var dest: Vector2i = result["teleport_to"]
-			_hero.grid_cell = dest
-			_hero.global_position = _grid.cell_to_world(dest)
-			_hero._grid_path.clear()
-			_hero._grid_moving = false
-			var tp_revealed := _grid.reveal_around(dest.x, dest.y, GameConfig.HERO_VISION_RADIUS)
-			if not tp_revealed.is_empty():
-				_renderer.reveal_cells(tp_revealed)
-		if result.get("boss_gate", false) and not _boss_spawned:
-			_spawn_boss()
+		_refresh_room_status()
+		_check_room_clear()
+
+
+func _check_room_clear() -> void:
+	if _exits_opened:
+		return
+	if _grid.are_all_events_cleared():
+		_exits_opened = true
+		_grid.open_exits()
+		# Rebuild pathfinder with exits now passable
+		_pathfinder = GridPathfinder.new()
+		_pathfinder.setup(_grid)
+		_renderer.open_exits()
+		_show_floating_text(_hero.global_position, "出口开启!", Color(0.3, 1.0, 0.5))
+		_world_map.mark_room_cleared(_current_room_index)
+		if _mini_map:
+			_mini_map.queue_redraw()
+
+
+func _transition_to_room(target_room: int) -> void:
+	_load_room(target_room)
+
+
+func _refresh_room_status() -> void:
+	if _room_status_label == null:
+		return
+	var remaining := _grid.get_remaining_event_count()
+	if remaining > 0:
+		var chain := _tile_effects.get_chain_count()
+		var chain_text := ""
+		if chain > 0:
+			chain_text = " | 连锁: %d (×%.1f)" % [chain, _tile_effects.get_chain_multiplier()]
+		_room_status_label.text = "剩余事件: %d%s" % [remaining, chain_text]
+		_room_status_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.4))
+	elif _exits_opened:
+		_room_status_label.text = "出口已开启 - 前往下一房间"
+		_room_status_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5))
+	else:
+		_room_status_label.text = ""
 
 
 func _on_hero_path_finished() -> void:
@@ -501,8 +633,8 @@ func _on_card_dropped(monster_id: StringName, grid_cell: Vector2i) -> void:
 	if monster and is_elite:
 		monster.mark_elite()
 	if monster:
-		var dist := _grid.get_path_distance_to_spawn(grid_cell.x, grid_cell.y)
-		var mult := RunManager.get_difficulty_for_distance(dist)
+		var depth: int = _world_map.room_depth[_current_room_index]
+		var mult := RunManager.get_difficulty_for_depth(depth)
 		if mult > 1.0 and monster.base_stats:
 			monster.base_stats.attack = int(monster.base_stats.attack * mult)
 			monster.base_stats.hp = int(monster.base_stats.hp * mult)
@@ -546,6 +678,7 @@ func _on_monster_died(_unit: CombatUnit, monster: Monster) -> void:
 	var death_cell := _grid.world_to_cell(death_pos)
 	_grid.set_occupied(death_cell.x, death_cell.y, false)
 	_pending_loot_cell = death_cell
+	_pending_loot_monster_id = monster.data.id if monster.data else &""
 	_handle_death_mechanics(monster, death_pos)
 
 	var resonance_mult := 1.0
@@ -581,6 +714,18 @@ func _on_monster_died(_unit: CombatUnit, monster: Monster) -> void:
 		_hero.base_stats.hp = mini(_hero.base_stats.hp + _hero.kill_heal, effective.max_hp)
 		_hero.refresh_display()
 
+	if is_instance_valid(_hero) and _hero.is_alive():
+		if _hero.nature_kill_heal > 0:
+			var eff := _hero.get_combat_stats()
+			_hero.base_stats.hp = mini(_hero.base_stats.hp + _hero.nature_kill_heal, eff.max_hp)
+			_hero.refresh_display()
+		if _hero.execute_aspd_buff and monster.base_stats != null:
+			var was_low := float(monster.base_stats.hp) / float(maxi(1, monster.base_stats.max_hp)) < 0.3
+			if was_low:
+				_add_combo_buff(&"assassin_aspd", "致命连击", 2, {"attack_speed": 0.5})
+		if _hero.ignore_defense_chance > 0.0 and randf() < _hero.ignore_defense_chance:
+			_hero._ignore_defense_pending = true
+
 	_monsters.erase(monster)
 	_kill_count += 1
 	if is_instance_valid(_hero) and _hero.buff_container:
@@ -602,6 +747,20 @@ func _handle_death_mechanics(monster: Monster, pos: Vector2) -> void:
 		_grid.set_tile(cell.x, cell.y, DungeonTileType.Kind.POISON_SWAMP)
 		_renderer.update_tile_visual(cell, DungeonTileType.Kind.POISON_SWAMP)
 		_grid.used[cell.y][cell.x] = false
+	if monster.death_retaliate:
+		if is_instance_valid(_hero) and _hero.is_alive():
+			_hero.take_damage(Monster.RETALIATE_DAMAGE)
+			_show_floating_text(pos, "反噬! -%d" % Monster.RETALIATE_DAMAGE, Color(0.95, 0.4, 0.3))
+	if monster.death_heal_tile:
+		var cell := _grid.world_to_cell(pos)
+		_grid.set_tile(cell.x, cell.y, DungeonTileType.Kind.HEAL_SPRING)
+		_renderer.update_tile_visual(cell, DungeonTileType.Kind.HEAL_SPRING)
+		_grid.used[cell.y][cell.x] = false
+		_show_floating_text(pos, "化为治愈泉", Color(0.4, 0.7, 0.9))
+	if monster.death_buff_hero:
+		if is_instance_valid(_hero) and _hero.is_alive():
+			_apply_firefly_buff()
+			_show_floating_text(pos, "攻速提升!", Color(0.95, 0.9, 0.3))
 
 
 func _trigger_goblin_explosion(pos: Vector2, source: Monster) -> void:
@@ -666,6 +825,24 @@ func spawn_friendly_skeletons(count: int, center: Vector2, duration: float) -> v
 		s.setup(_hero, self, duration, _hero.friendly_skeleton_death_heal, _hero.undead_summon_leaves_aura)
 
 
+func _apply_firefly_buff() -> void:
+	if _hero.buff_container == null:
+		return
+	var aspd_value := 0.5
+	var kill_count := 3
+	if _hero.firefly_buff_double:
+		aspd_value = 1.0
+	kill_count += _hero.firefly_buff_bonus
+	var buff := BuffDef.new()
+	buff.id = &"firefly_aspd"
+	buff.display_name = "萤光赋能"
+	buff.duration_type = BuffDef.DurationType.COUNTED
+	buff.duration_count = kill_count
+	buff.trigger_event = &"kill"
+	buff.modifiers = {"attack_speed": aspd_value}
+	_hero.buff_container.add_buff(buff, &"firefly")
+
+
 func _apply_kill_stat_gain(monster_id: StringName, multiplier: float = 1.0) -> void:
 	if not is_instance_valid(_hero) or _hero.base_stats == null:
 		return
@@ -714,14 +891,26 @@ func _show_stat_gain_text(stat_delta: Dictionary) -> void:
 
 # --- Boss ---
 
-func _spawn_boss() -> void:
+func _spawn_boss_in_room() -> void:
 	_boss_spawned = true
 	var boss := RunManager.current_boss
 	if boss == null:
 		return
+	var boss_cell := _grid.spawn_cell + Vector2i(5, 0)
+	# Find valid cell for boss
+	for radius in range(0, 8):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				var nx := boss_cell.x + dx
+				var ny := boss_cell.y + dy
+				if _grid.in_bounds(nx, ny) and _grid.get_tile(nx, ny) == DungeonTileType.Kind.EMPTY and not _grid.is_occupied(nx, ny):
+					boss_cell = Vector2i(nx, ny)
+					radius = 99
+					break
+
 	_boss_monster = MONSTER_SCENE.instantiate()
 	_monster_container.add_child(_boss_monster)
-	_boss_monster.global_position = _grid.cell_to_world(_grid.boss_cell)
+	_boss_monster.global_position = _grid.cell_to_world(boss_cell)
 	var boss_stats := boss.base_stats.duplicate_stats()
 	_boss_monster.base_stats = boss_stats
 	_boss_monster.move_speed = boss.move_speed
@@ -733,10 +922,10 @@ func _spawn_boss() -> void:
 		var body: Sprite2D = _boss_monster.get_node("Body")
 		body.modulate = boss.wireframe_color
 		body.scale = Vector2(1.8, 1.8)
-	_grid.set_occupied(_grid.boss_cell.x, _grid.boss_cell.y, true)
+	_grid.set_occupied(boss_cell.x, boss_cell.y, true)
 	register_monster(_boss_monster)
 	_setup_boss_hp_bar(boss)
-	_show_floating_text(_grid.cell_to_world(_grid.boss_cell), "Boss 出现!", Color(0.95, 0.3, 0.2))
+	_show_floating_text(_grid.cell_to_world(boss_cell), "Boss 出现!", Color(0.95, 0.3, 0.2))
 
 
 func _setup_boss_hp_bar(boss: BossData) -> void:
@@ -802,12 +991,13 @@ func _boss_summon(monster_id: StringName) -> void:
 	var data := DataRegistry.get_monster(monster_id)
 	if data == null:
 		return
+	var boss_cell := _grid.world_to_cell(_boss_monster.global_position)
 	var offsets := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
 					Vector2i(1, 1), Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1)]
 	offsets.shuffle()
-	var spawn_cell := _grid.boss_cell
+	var spawn_cell := boss_cell
 	for offset in offsets:
-		var tc: Vector2i = _grid.boss_cell + offset
+		var tc: Vector2i = boss_cell + offset
 		if _grid.is_passable(tc.x, tc.y) and not _grid.is_occupied(tc.x, tc.y):
 			spawn_cell = tc
 			break
@@ -865,14 +1055,14 @@ func _show_victory_panel() -> void:
 	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
 	vbox.add_child(title)
 	var stats := Label.new()
-	stats.text = "探索时间: %ds | 击杀: %d | 部署: %d" % [int(_survival_time), _kill_count, _deploy_count]
+	stats.text = "时间: %ds | 击杀: %d | 部署: %d | 房间: %d" % [int(_survival_time), _kill_count, _deploy_count, _current_room_index + 1]
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stats.add_theme_font_size_override("font_size", 14)
 	stats.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
 	vbox.add_child(stats)
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 20)
-	vbox.add_child(spacer)
+	var spacer2 := Control.new()
+	spacer2.custom_minimum_size = Vector2(0, 20)
+	vbox.add_child(spacer2)
 	var menu_btn := Button.new()
 	menu_btn.text = "返回主菜单"
 	menu_btn.custom_minimum_size = Vector2(200, 44)
@@ -1013,7 +1203,7 @@ func _refresh_combo_hint() -> void:
 func _setup_evolution_ui() -> void:
 	_evolution_panel = HBoxContainer.new()
 	_evolution_panel.name = "EvolutionPanel"
-	_evolution_panel.position = Vector2(10, 42)
+	_evolution_panel.position = Vector2(10, 60)
 	_evolution_panel.add_theme_constant_override("separation", 6)
 	$UI.add_child(_evolution_panel)
 	for progress in _evolution_tracker.get_all_progress():
@@ -1035,7 +1225,7 @@ func _setup_evolution_ui() -> void:
 	$UI.add_child(_evolution_label)
 	_hybrid_panel_label = Label.new()
 	_hybrid_panel_label.name = "HybridPanelLabel"
-	_hybrid_panel_label.position = Vector2(10, 62)
+	_hybrid_panel_label.position = Vector2(10, 78)
 	_hybrid_panel_label.add_theme_font_size_override("font_size", 12)
 	_hybrid_panel_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.3, 0.9))
 	_hybrid_panel_label.visible = false
@@ -1127,6 +1317,33 @@ func _apply_evolution_effect(path_id: StringName, tier: int) -> void:
 					_hero.venom_stacks_per_hit = 1
 					_hero.venom_explode_at_5 = true
 					_hero.venom_explode_spreads = true
+		&"assassin":
+			match tier:
+				1: _hero.low_hp_damage_bonus = 0.5
+				2:
+					_hero.low_hp_damage_bonus = 0.5
+					_hero.execute_aspd_buff = true
+				3:
+					_hero.low_hp_damage_bonus = 0.5
+					_hero.execute_aspd_buff = true
+					_hero.ignore_defense_chance = 0.3
+		&"nature":
+			match tier:
+				1: _hero.nature_kill_heal = 3
+				2: _hero.nature_kill_heal = 6
+				3:
+					_hero.nature_kill_heal = 6
+					_hero.nature_auto_regen = true
+		&"radiance":
+			match tier:
+				1: _hero.firefly_buff_bonus = 1
+				2:
+					_hero.firefly_buff_bonus = 1
+					_hero.firefly_buff_double = true
+				3:
+					_hero.firefly_buff_bonus = 1
+					_hero.firefly_buff_double = true
+					_hero.base_stats.attack_speed += 0.3
 	_hero.refresh_display()
 
 
@@ -1191,6 +1408,9 @@ func _apply_hybrid_effect(hybrid_id: StringName) -> void:
 		&"brutal_venom": _hero.venom_explode_damage = 25
 		&"undead_symbiosis": _hero.friendly_skeleton_death_heal = 5
 		&"predator_undead": _hero.undead_force_summon = true
+		&"assassin_predator": _hero.crit_mult += 0.5
+		&"nature_symbiosis": _hero.kill_heal += 3
+		&"radiance_shadow": _hero.dodge_chance += 0.1
 	_hero.refresh_display()
 
 
@@ -1302,14 +1522,27 @@ func _unhandled_input(event: InputEvent) -> void:
 func _on_tile_clicked(cell: Vector2i, screen_pos: Vector2) -> void:
 	if _game_over:
 		return
-	if not _grid.in_bounds(cell.x, cell.y) or not _grid.is_revealed(cell.x, cell.y):
+	if not _grid.in_bounds(cell.x, cell.y):
 		_hide_tile_info()
 		return
 	var kind := _grid.get_tile(cell.x, cell.y)
+	# Handle exit click
+	if kind == DungeonTileType.Kind.EXIT and _exits_opened and _grid.exit_cells.has(cell):
+		_walk_hero_to_exit(cell)
+		return
 	if cell == _tile_info_cell or kind == DungeonTileType.Kind.WALL or kind == DungeonTileType.Kind.EMPTY:
 		_hide_tile_info()
 		return
 	_show_tile_info(cell, kind, screen_pos)
+
+
+func _walk_hero_to_exit(exit_cell: Vector2i) -> void:
+	_walking_to_event_cell = Vector2i(-1, -1)
+	_pending_loot_cell = Vector2i(-1, -1)
+	var path := _pathfinder.find_path(_hero.grid_cell, exit_cell)
+	if path.size() > 1:
+		path.remove_at(0)
+		_hero.set_grid_path(path)
 
 
 func _show_tile_info(cell: Vector2i, kind: int, screen_pos: Vector2) -> void:
@@ -1317,20 +1550,23 @@ func _show_tile_info(cell: Vector2i, kind: int, screen_pos: Vector2) -> void:
 	var name_text := DungeonTileType.get_display_name(kind)
 	var desc_text := DungeonTileType.get_description(kind)
 	var tile_color := DungeonTileType.get_color(kind).lightened(0.3)
+	var aff_name := DungeonTileType.get_affinity_name(kind)
+	if not aff_name.is_empty():
+		name_text += " [%s]" % aff_name
 	_tile_info_title.text = name_text
 	_tile_info_title.add_theme_color_override("font_color", tile_color)
-	_tile_info_desc.text = desc_text
+	var chain_hint := ""
+	if DungeonTileType.is_event(kind) and not _grid.is_used(cell.x, cell.y):
+		chain_hint = "\n当前连锁: ×%.1f" % _tile_effects.get_chain_multiplier()
+	_tile_info_desc.text = desc_text + chain_hint
 	var status_text := ""
 	var status_color := Color(0.5, 0.55, 0.65)
-	if _grid.is_used(cell.x, cell.y) and DungeonTileType.is_one_shot(kind):
-		status_text = "已使用"
+	if _grid.is_used(cell.x, cell.y):
+		status_text = "已清除"
 		status_color = Color(0.5, 0.5, 0.5)
-	elif not DungeonTileType.is_one_shot(kind) and kind != DungeonTileType.Kind.SPAWN_POINT:
-		status_text = "可重复触发"
-		status_color = Color(0.4, 0.8, 0.5)
-	else:
-		status_text = "一次性"
-		status_color = Color(0.85, 0.75, 0.4)
+	elif DungeonTileType.is_event(kind):
+		status_text = "待部署"
+		status_color = Color(0.9, 0.8, 0.4)
 	if _grid.is_occupied(cell.x, cell.y):
 		status_text += " | 有怪物"
 	_tile_info_status.text = status_text

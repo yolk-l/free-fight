@@ -11,6 +11,9 @@ var has_resurrection: bool = false
 var death_explodes: bool = false
 var death_splits: bool = false
 var death_poison_puddle: bool = false
+var death_retaliate: bool = false
+var death_heal_tile: bool = false
+var death_buff_hero: bool = false
 var pack_buff: bool = false
 var stationary_buff: bool = false
 var _stationary_timer: float = 0.0
@@ -26,6 +29,7 @@ var aura_radius: float = 150.0
 const PACK_ASPD_MULT := 1.5
 const RESURRECTION_HP := 10
 const AURA_DEF_BONUS := 2
+const RETALIATE_DAMAGE := 6
 
 var _hero: Hero = null
 var _battle_controller: Node = null
@@ -79,6 +83,9 @@ func _apply_mechanic_flags() -> void:
 			stationary_buff = true
 			_stationary_buff_active = true
 		&"viper":    death_poison_puddle = true
+		&"mantis":   death_retaliate = true
+		&"treant":   death_heal_tile = true
+		&"firefly":  death_buff_hero = true
 
 
 func get_combat_stats() -> CombatStats:

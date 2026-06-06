@@ -58,6 +58,20 @@ var venom_explode_at_5: bool = false
 var venom_explode_damage: int = 15
 var venom_explode_spreads: bool = false
 
+# Mantis - assassin
+var low_hp_damage_bonus: float = 0.0
+var execute_aspd_buff: bool = false
+var ignore_defense_chance: float = 0.0
+var _ignore_defense_pending: bool = false
+
+# Treant - nature
+var nature_kill_heal: int = 0
+var nature_auto_regen: bool = false
+
+# Firefly - radiance
+var firefly_buff_bonus: int = 0
+var firefly_buff_double: bool = false
+
 # Hybrid 5 - emergency summon
 var emergency_summon_enabled: bool = false
 var emergency_summon_used: bool = false
@@ -210,6 +224,15 @@ func set_grid_path(path: Array[Vector2i]) -> void:
 		_start_next_grid_step()
 
 
+func move_to_cell(cell: Vector2i, world_pos: Vector2) -> void:
+	grid_cell = cell
+	_grid_path.clear()
+	_grid_step_from = global_position
+	_grid_step_to = world_pos
+	_grid_step_timer = 0.0
+	_grid_moving = true
+
+
 func is_grid_idle() -> bool:
 	return not _grid_moving and _grid_path.is_empty()
 
@@ -235,6 +258,10 @@ func _tick_dodge_buff(delta: float) -> void:
 func _tick_hp_regen(delta: float) -> void:
 	var buff_regen := buff_container.get_modifier_sum(&"hp_regen") if buff_container else 0.0
 	var total_regen := hp_regen_per_sec + buff_regen
+	if nature_auto_regen and base_stats != null:
+		var hp_ratio := float(base_stats.hp) / float(maxi(1, get_combat_stats().max_hp))
+		if hp_ratio < 0.3:
+			total_regen += 2.0
 	if total_regen <= 0.0:
 		return
 	_regen_tick += delta
@@ -369,9 +396,16 @@ func try_attack(delta: float) -> void:
 	if buff_container:
 		total_pen += int(buff_container.get_modifier_sum(&"armor_penetration"))
 	var target_def := target.get_combat_stats().defense
-	if total_pen > 0:
+	if _ignore_defense_pending:
+		target_def = 0
+		_ignore_defense_pending = false
+	elif total_pen > 0:
 		target_def = maxi(0, target_def - total_pen)
 	var damage := maxi(1, stats.attack - target_def)
+	if low_hp_damage_bonus > 0.0 and target.base_stats != null:
+		var target_hp_ratio := float(target.base_stats.hp) / float(maxi(1, target.base_stats.max_hp))
+		if target_hp_ratio < 0.3:
+			damage = int(damage * (1.0 + low_hp_damage_bonus))
 	var did_crit := false
 	if crit_pending:
 		damage = int(damage * crit_mult)

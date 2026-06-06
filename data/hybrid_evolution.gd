@@ -18,6 +18,9 @@ static func get_all() -> Array:
 		_make(&"brutal_venom", &"brutal", &"venom", "毒裁者", "穿甲+2,处决阈值+5%"),
 		_make(&"undead_symbiosis", &"undead", &"symbiosis", "生死融合", "击杀回血+2,回复+0.3/s"),
 		_make(&"predator_undead", &"predator", &"undead", "亡灵猎手", "击杀回血+3"),
+		_make(&"assassin_predator", &"assassin", &"predator", "猎杀本能", "暴击+0.5x"),
+		_make(&"nature_symbiosis", &"nature", &"symbiosis", "万物共生", "击杀回血+3"),
+		_make(&"radiance_shadow", &"radiance", &"shadow", "光暗交织", "闪避+10%"),
 	]
 
 

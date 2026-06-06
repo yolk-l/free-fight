@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EvolutionPath" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/evolution_path.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+path_id = &"assassin"
+display_name = "刺客"
+monster_type = &"mantis"
+tier1_threshold = 5
+tier1_name = "利刃本能"
+tier1_description = "攻击低于30%HP的目标伤害+50%"
+tier2_threshold = 12
+tier2_name = "致命连击"
+tier2_description = "处决击杀后攻速+0.5(持续2次击杀)"
+tier3_threshold = 20
+tier3_name = "暗杀大师"
+tier3_description = "击杀后30%概率下次攻击无视防御"
